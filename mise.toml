@@ -28,5 +28,5 @@ description = "Build the execute_query binary"
 run = "go build -o bin/execute_query ./cmd/execute_query"
 
 [tasks.ci]
-description = "Full CI pipeline (lint + test + build)"
-depends = ["lint", "test", "build"]
+description = "Full CI pipeline (test, build, then lint — ordered to warm the module/build cache before golangci-lint)"
+run = "mise run test && mise run build && mise run lint"

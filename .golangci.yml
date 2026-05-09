@@ -1,7 +1,9 @@
 version: "2"
 
 run:
-  timeout: 5m
+  # macOS CI runners can exceed 5m on cold cache (wazero compile + parallel
+  # Go work competing with lint); keep headroom for golangci-lint package load.
+  timeout: 15m
 
 linters:
   default: standard
