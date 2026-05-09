@@ -91,13 +91,22 @@ string, update the constant and the submodule pin together.
 
 ## Catalogs
 
-Available analyze-only: `none`, `sample`, `tpch`.
+Available analyze-only: `none`, `sample`, `tpch`, `tpch_graph`.
+
+`tpch_graph` adds the join pseudo-columns from upstream's
+`tpch_catalog.cc` (e.g. `Customer.Orders : MULTIROW<Orders>`). Walking
+those pseudo-columns requires
+`--enabled_language_features=ALL_MINUS_DEV,+FEATURE_ROW_TYPE` (the
+`--catalog` help text says so). The
+`Column::JoinColumnAttributes` upstream attaches to each pseudo-column
+is **not** set — `goccy.OptionalJoinColumnAttributes` has no exported
+constructor or `SimpleColumn` setter — so behaviour that relies on
+those attributes (e.g. upstream's join-flattening rewrite) will
+diverge.
 
 Adding a catalog ⇒ hand-port the schema into `catalog/` (no row
 data needed; data is unused without an evaluator). Add a unit test
 asserting each registered table resolves through `analyze`.
-
-`tpch_graph` returns `ErrUnsupportedCatalog`.
 
 ## Cache directory
 
@@ -114,10 +123,24 @@ Clone exploratory clones into `.tmp/` (gitignored). Do not commit
 them. The submodule under `third_party/googlesql` is the only
 pinned-by-this-repo dependency.
 
-## Module path note
+## goccy/go-googlesql gotchas
 
-The Go module path is `github.com/apstndb/go-googlesql-executequery`.
-The working directory was originally created as `…-executesql`
-(typo); the user will rename to `…-executequery` after implementation
-completes. Implementation does not depend on the directory name; only
-the module path matters.
+Quirks of `goccy/go-googlesql` v0.2.1 that are not obvious from the
+public API and have already cost real debugging time:
+
+- `ParserOptions.SetLanguageOptions(lo)` *moves-from* its argument on
+  the wasm side. The caller's `*LanguageOptions` survives as a Go
+  handle but now points at a default-constructed instance with no
+  enabled features. Hand the parser its own freshly-built copy
+  (`executequery.go` builds a separate `parserLO` exactly for this);
+  never share one `*LanguageOptions` between `ParserOptions` and
+  `AnalyzerOptions`.
+- `SimpleCatalog.AddOwnedTable(table)` calls `clearPtrAny(table)` after
+  the wasm trip, so any retained `*SimpleTable` handle becomes null.
+  If you need to mutate tables after they are part of a catalog,
+  populate them *before* calling `AddOwnedTable` (see the `postBuild`
+  hook on `catalog.buildSimple`), or switch to `AddTable` and own the
+  table from Go.
+- `goccy.OptionalJoinColumnAttributes` is exported but has no
+  constructor or `SimpleColumn` setter. There is currently no way to
+  attach `Column::JoinColumnAttributes` from Go.

@@ -5,9 +5,8 @@ into `unsupported.go` reason constants or commit messages.
 
 ## Release / housekeeping (post-implementation)
 
-- [ ] Rename working directory `go-googlesql-executesql` → `go-googlesql-executequery`.
-      The Go module path is already `…-executequery`; only the dir
-      name on disk needs fixing.
+- [x] Rename working directory → `go-googlesql-executequery` (already
+      done on disk; this entry was stale).
 - [x] Initial commit and push.
       Confirm there are no embedded secrets or stray cache directories
       first (`.tmp/` is gitignored; double-check `git status`).
@@ -15,8 +14,11 @@ into `unsupported.go` reason constants or commit messages.
       push `main` plus the initial release tag.
 - [x] Cut the first release: `v0.2.YYYYMMDD` (go-googlesql v0.2.x line).
       See `RELEASING.md` for the carry-over rule. (Shipped `v0.2.20260509`.)
-- [ ] Once CI is green on `main`, double-check the macOS leg covers
-      the `cache.Default()` path that XDG-only Linux runners do not.
+- [x] Confirmed macOS CI leg exercises `cache.Default()`:
+      `cache.TestDefaultUnderUserCacheDir` sets `HOME` to a temp dir
+      and asserts the resolved path lands under it, which on macOS
+      goes through `~/Library/Caches/...`. Run as part of `mise run
+      ci` on the `macos-latest` matrix entry.
 
 ## Documentation polish
 
@@ -60,9 +62,32 @@ spell out the precise upstream change that unblocks each one.
       Needs `MacroCatalog` register/lookup methods plus
       `ParserOptions.SetMacroCatalog`. The `MacroCatalog` type is
       already a placeholder in go-googlesql but has no mutator API.
-- [ ] `--catalog=tpch_graph`.
-      Pure Go-side work: hand-port the property-graph schema
-      atop the existing TPCH tables.
+- [x] `--catalog=tpch_graph` is supported. `catalog/tpch_graph.go`
+      ports `AddJoinColumns`/`AddJoinColumn`/`AddOneJoinColumn` from
+      upstream `tpch_catalog.cc:331-468`, using
+      `TypeFactory.MakeRowType3` and `NewSimpleColumn(…,
+      isPseudoColumn=true, isWritableColumn=false)`. Analyze and
+      DESCRIBE both work; pseudo-col traversal (`SELECT c.C_NAME FROM
+      Customer c, c.Orders o`) resolves correctly when the user
+      passes `--enabled_language_features=ALL_MINUS_DEV,+FEATURE_ROW_TYPE`
+      (mirrors upstream's requirement, called out in `--help`).
+
+      Found and fixed a goccy v0.2.1 footgun while wiring this:
+      `ParserOptions.SetLanguageOptions` *moves-from* its argument on
+      the wasm side, leaving the caller's `*LanguageOptions` handle
+      pointing at a default-constructed instance with no features
+      enabled. `executequery.go:55-61` now builds a dedicated
+      `parserLO` so the analyzer's LO survives unchanged. File this
+      upstream against `goccy/go-googlesql` so the move-from semantics
+      are documented (or fixed to copy).
+
+      Known residual gap: `OptionalJoinColumnAttributes` is exported
+      by goccy v0.2.1 but with no constructor or `SimpleColumn`
+      setter, so we cannot attach the upstream
+      `Column::JoinColumnAttributes`. Pseudo-col walks resolve via the
+      RowType, but anything that depends on JoinColumnAttributes (e.g.
+      upstream's join-flattening rewrite, evaluator-side multi-row
+      expansion) will diverge from upstream behaviour.
 
 ## Catalog completeness (pure Go-side work)
 
@@ -70,9 +95,14 @@ spell out the precise upstream change that unblocks each one.
       tables from upstream `sample_catalog_impl.cc`
       (`TestTable`, `EnumTable`, `ZZZ_AmbiguousHasTestTable`, etc.)
       once Go-side proto descriptor handling is designed.
-- [ ] Surface primary keys and per-column nullability through
-      `catalog.TableSchema` so DESCRIBE matches upstream output more
-      closely. Today the schemas only carry name + type.
+- [x] Primary keys: `TableSchema` now carries `PrimaryKey []string`,
+      `buildTable` calls `SimpleTable.SetPrimaryKey`, and
+      `Format()` prints `Primary key: (...)`. tpch_schema and the
+      keyed sample tables (`KeyValueWithPrimaryKey`, `TwoIntegers`,
+      `FourIntegers`) populate it. Per-column nullability is not yet
+      surfaced — `NewSimpleColumn` has no nullable bool; would need
+      `NewSimpleColumn2(*AnnotatedType, …)` plus an `AnnotatedType`
+      builder. Defer until needed.
 
 ## Tooling
 

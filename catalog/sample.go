@@ -52,7 +52,7 @@ func sampleSchema() *Schema {
 				{"Key", i},
 				{"value", str},
 			}},
-			{Name: "KeyValueWithPrimaryKey", Columns: []ColumnSchema{
+			{Name: "KeyValueWithPrimaryKey", PrimaryKey: []string{"Key"}, Columns: []ColumnSchema{
 				{"Key", i},
 				{"Value", str},
 			}},
@@ -79,11 +79,11 @@ func sampleSchema() *Schema {
 				{"b", i},
 				{"c", str},
 			}},
-			{Name: "TwoIntegers", Columns: []ColumnSchema{
+			{Name: "TwoIntegers", PrimaryKey: []string{"key"}, Columns: []ColumnSchema{
 				{"key", i},
 				{"value", i},
 			}},
-			{Name: "FourIntegers", Columns: []ColumnSchema{
+			{Name: "FourIntegers", PrimaryKey: []string{"key1", "key2"}, Columns: []ColumnSchema{
 				{"key1", i},
 				{"value1", i},
 				{"key2", i},

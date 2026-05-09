@@ -28,7 +28,7 @@ func TestParseName(t *testing.T) {
 		"none":       {catalog.None, true, false},
 		"sample":     {catalog.Sample, true, false},
 		"tpch":       {catalog.TPCH, true, false},
-		"tpch_graph": {catalog.TPCHGraph, false, false},
+		"tpch_graph": {catalog.TPCHGraph, true, false},
 		"bogus":      {"", false, true},
 	}
 	for in, tc := range cases {
@@ -80,10 +80,75 @@ func TestBuildSampleAndTPCH(t *testing.T) {
 	}
 }
 
-func TestBuildTPCHGraphRejected(t *testing.T) {
-	lo, _ := googlesql.NewLanguageOptions()
-	tf, _ := googlesql.NewTypeFactory()
-	if _, err := catalog.Build(catalog.TPCHGraph, lo, tf); err == nil {
-		t.Errorf("expected error for tpch_graph, got nil")
+func TestTPCHPrimaryKeys(t *testing.T) {
+	t.Parallel()
+	lo, err := googlesql.NewLanguageOptions()
+	if err != nil {
+		t.Fatalf("NewLanguageOptions: %v", err)
+	}
+	tf, err := googlesql.NewTypeFactory()
+	if err != nil {
+		t.Fatalf("NewTypeFactory: %v", err)
+	}
+	res, err := catalog.Build(catalog.TPCH, lo, tf)
+	if err != nil {
+		t.Fatalf("Build(tpch): %v", err)
+	}
+	want := map[string][]string{
+		"Customer": {"C_CUSTKEY"},
+		"LineItem": {"L_ORDERKEY", "L_LINENUMBER"},
+		"PartSupp": {"PS_PARTKEY", "PS_SUPPKEY"},
+	}
+	for name, keys := range want {
+		ts, ok := res.Schema.FindTable(name)
+		if !ok {
+			t.Errorf("table %q not in schema", name)
+			continue
+		}
+		if got := strings.Join(ts.PrimaryKey, ","); got != strings.Join(keys, ",") {
+			t.Errorf("%s: PrimaryKey = %v; want %v", name, ts.PrimaryKey, keys)
+		}
+		if !strings.Contains(ts.Format(), "Primary key: ("+strings.Join(keys, ", ")+")") {
+			t.Errorf("%s: Format() missing primary key line:\n%s", name, ts.Format())
+		}
+	}
+}
+
+func TestBuildTPCHGraph(t *testing.T) {
+	lo, err := googlesql.NewLanguageOptions()
+	if err != nil {
+		t.Fatalf("NewLanguageOptions: %v", err)
+	}
+	if err := lo.EnableMaximumLanguageFeatures(); err != nil {
+		t.Fatalf("EnableMaximumLanguageFeatures: %v", err)
+	}
+	tf, err := googlesql.NewTypeFactory()
+	if err != nil {
+		t.Fatalf("NewTypeFactory: %v", err)
+	}
+	res, err := catalog.Build(catalog.TPCHGraph, lo, tf)
+	if err != nil {
+		t.Fatalf("Build(tpch_graph): %v", err)
+	}
+	cust, ok := res.Schema.FindTable("Customer")
+	if !ok {
+		t.Fatalf("Customer not found in schema")
+	}
+	// The graph variant adds Orders (MULTIROW<Orders>) and Nation
+	// (ROW<Nation>) pseudo-columns to Customer. Match by name only;
+	// Kind is unknown for ROW types in our Schema (we expose
+	// TypeKindUnknown).
+	hasOrders := false
+	hasNation := false
+	for _, c := range cust.Columns {
+		switch c.Name {
+		case "Orders":
+			hasOrders = true
+		case "Nation":
+			hasNation = true
+		}
+	}
+	if !hasOrders || !hasNation {
+		t.Errorf("Customer columns missing Orders/Nation pseudo-columns: %+v", cust.Columns)
 	}
 }

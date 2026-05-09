@@ -159,15 +159,25 @@ func TestRunMultiStatement(t *testing.T) {
 	}
 }
 
-func TestRunCatalogTPCHGraphRejected(t *testing.T) {
+func TestRunCatalogTPCHGraph(t *testing.T) {
 	t.Parallel()
+	fs, err := executequery.ParseFeatureSet("ALL_MINUS_DEV,+FEATURE_ROW_TYPE")
+	if err != nil {
+		t.Fatalf("ParseFeatureSet: %v", err)
+	}
 	cfg := executequery.Config{
-		Modes:       []executequery.Mode{executequery.ModeAnalyze},
-		CatalogName: "tpch_graph",
+		Modes:                   []executequery.Mode{executequery.ModeAnalyze},
+		CatalogName:             "tpch_graph",
+		EnabledLanguageFeatures: fs,
 	}
 	w := &captureWriter{}
-	err := executequery.Run(context.Background(), "SELECT 1", cfg, w)
-	if !errors.Is(err, executequery.ErrUnsupportedCatalog) {
-		t.Fatalf("expected ErrUnsupportedCatalog, got %v", err)
+	if err := executequery.Run(context.Background(), "SELECT c.C_NAME FROM Customer c, c.Orders o LIMIT 1", cfg, w); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(w.resolved) != 1 {
+		t.Fatalf("expected 1 resolved emit, got %d (%v)", len(w.resolved), w.resolved)
+	}
+	if !strings.Contains(w.resolved[0], "Customer.C_NAME") {
+		t.Errorf("resolved AST missing Customer.C_NAME: %s", w.resolved[0])
 	}
 }

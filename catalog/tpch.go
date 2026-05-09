@@ -10,10 +10,7 @@ import googlesql "github.com/goccy/go-googlesql"
 // 1 MB of CSV data plus a CSV reader; the reference evaluator that
 // would consume it is not exposed by goccy/go-googlesql.)
 //
-// Column types match upstream describe.txt exactly. Primary keys
-// from describe.txt are not yet captured here because
-// SimpleTable.SetPrimaryKey requires column-index plumbing we do
-// not need for analyze; add when DESCRIBE wants to surface them.
+// Column types and primary keys match upstream describe.txt exactly.
 func tpchSchema() *Schema {
 	u := googlesql.TypeKindTypeUint64
 	i := googlesql.TypeKindTypeInt64
@@ -23,7 +20,7 @@ func tpchSchema() *Schema {
 	return &Schema{
 		Name: "tpch",
 		Tables: []TableSchema{
-			{Name: "Customer", Columns: []ColumnSchema{
+			{Name: "Customer", PrimaryKey: []string{"C_CUSTKEY"}, Columns: []ColumnSchema{
 				{"C_CUSTKEY", u},
 				{"C_NAME", s},
 				{"C_ADDRESS", s},
@@ -33,7 +30,7 @@ func tpchSchema() *Schema {
 				{"C_MKTSEGMENT", s},
 				{"C_COMMENT", s},
 			}},
-			{Name: "LineItem", Columns: []ColumnSchema{
+			{Name: "LineItem", PrimaryKey: []string{"L_ORDERKEY", "L_LINENUMBER"}, Columns: []ColumnSchema{
 				{"L_ORDERKEY", u},
 				{"L_PARTKEY", u},
 				{"L_SUPPKEY", u},
@@ -51,13 +48,13 @@ func tpchSchema() *Schema {
 				{"L_SHIPMODE", s},
 				{"L_COMMENT", s},
 			}},
-			{Name: "Nation", Columns: []ColumnSchema{
+			{Name: "Nation", PrimaryKey: []string{"N_NATIONKEY"}, Columns: []ColumnSchema{
 				{"N_NATIONKEY", u},
 				{"N_NAME", s},
 				{"N_REGIONKEY", u},
 				{"N_COMMENT", s},
 			}},
-			{Name: "Orders", Columns: []ColumnSchema{
+			{Name: "Orders", PrimaryKey: []string{"O_ORDERKEY"}, Columns: []ColumnSchema{
 				{"O_ORDERKEY", u},
 				{"O_CUSTKEY", u},
 				{"O_ORDERSTATUS", s},
@@ -68,7 +65,7 @@ func tpchSchema() *Schema {
 				{"O_SHIPPRIORITY", i},
 				{"O_COMMENT", s},
 			}},
-			{Name: "Part", Columns: []ColumnSchema{
+			{Name: "Part", PrimaryKey: []string{"P_PARTKEY"}, Columns: []ColumnSchema{
 				{"P_PARTKEY", u},
 				{"P_NAME", s},
 				{"P_MFGR", s},
@@ -79,19 +76,19 @@ func tpchSchema() *Schema {
 				{"P_RETAILPRICE", d},
 				{"P_COMMENT", s},
 			}},
-			{Name: "PartSupp", Columns: []ColumnSchema{
+			{Name: "PartSupp", PrimaryKey: []string{"PS_PARTKEY", "PS_SUPPKEY"}, Columns: []ColumnSchema{
 				{"PS_PARTKEY", u},
 				{"PS_SUPPKEY", u},
 				{"PS_AVAILQTY", i},
 				{"PS_SUPPLYCOST", d},
 				{"PS_COMMENT", s},
 			}},
-			{Name: "Region", Columns: []ColumnSchema{
+			{Name: "Region", PrimaryKey: []string{"R_REGIONKEY"}, Columns: []ColumnSchema{
 				{"R_REGIONKEY", u},
 				{"R_NAME", s},
 				{"R_COMMENT", s},
 			}},
-			{Name: "Supplier", Columns: []ColumnSchema{
+			{Name: "Supplier", PrimaryKey: []string{"S_SUPPKEY"}, Columns: []ColumnSchema{
 				{"S_SUPPKEY", u},
 				{"S_NAME", s},
 				{"S_ADDRESS", s},

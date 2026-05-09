@@ -35,7 +35,8 @@ const helpCatalog = "" +
 	"\n  'none' - empty catalog" +
 	"\n  'sample' - the analyzer-test sample catalog" +
 	"\n  'tpch' - the TPC-H benchmark schema" +
-	"\n  'tpch_graph' - TPC-H plus a property graph (NOT SUPPORTED in this Go port)"
+	"\n  'tpch_graph' - TPC-H plus join pseudo-columns (requires" +
+	" --enabled_language_features=ALL_MINUS_DEV,+FEATURE_ROW_TYPE)"
 
 const helpImportPath = "The comma-separated list of directories to search for modules."
 

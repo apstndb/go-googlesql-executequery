@@ -47,7 +47,16 @@ func Run(ctx context.Context, sql string, cfg Config, w Writer) error {
 	if err != nil {
 		return fmt.Errorf("new parser options: %w", err)
 	}
-	if err := po.SetLanguageOptions(lo); err != nil {
+	// goccy/go-googlesql v0.2.1: ParserOptions.SetLanguageOptions
+	// silently *moves-from* its argument on the wasm side, leaving the
+	// caller's *LanguageOptions handle pointing at a default-constructed
+	// instance (no language features enabled). To keep the analyzer's
+	// LO usable, hand the parser its own freshly-built copy.
+	parserLO, err := cfg.buildLanguageOptions()
+	if err != nil {
+		return err
+	}
+	if err := po.SetLanguageOptions(parserLO); err != nil {
 		return fmt.Errorf("set parser language options: %w", err)
 	}
 
@@ -74,7 +83,9 @@ func selectCatalog(name string, lo *googlesql.LanguageOptions, tf *googlesql.Typ
 		return nil, err
 	}
 	if !supported {
-		return nil, catalogUnsupportedf(string(parsed), ReasonCatalogTPCHGraph)
+		// Reserved for future catalogs that are recognised but cannot
+		// be built; today every recognised name is also supported.
+		return nil, catalogUnsupportedf(string(parsed), "catalog recognised but not yet built in this Go port")
 	}
 	return catalog.Build(parsed, lo, tf)
 }

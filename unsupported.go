@@ -61,19 +61,6 @@ const ReasonModeExplain = "" +
 const ReasonModeExecute = "" +
 	"the execute mode requires the reference evaluator, which goccy/go-googlesql does not expose"
 
-// ReasonCatalogTPCHGraph: upstream's `tpch_graph` selectable catalog
-// provides the TPCH tables plus a property-graph view over them.
-//
-// Why unsupported: the graph schema requires GraphNodeTable /
-// GraphElementLabel construction and feature flags that this port
-// has not yet been verified against. Plain `tpch` works for analyze.
-//
-// Unblocked when: someone (probably the maintainer) adds the graph
-// definitions under catalog/tpch_graph.go and verifies them against
-// a representative analyze query.
-const ReasonCatalogTPCHGraph = "" +
-	"the tpch_graph catalog has not been ported to this Go implementation"
-
 // ReasonFlagTargetSyntax: upstream's `--target_syntax` selects the
 // SQL dialect produced by the unanalyze mode (`standard` or `pipe`).
 //

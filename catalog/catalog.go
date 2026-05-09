@@ -46,7 +46,7 @@ func ParseName(s string) (Name, bool, error) {
 	case "tpch":
 		return TPCH, true, nil
 	case "tpch_graph":
-		return TPCHGraph, false, nil
+		return TPCHGraph, true, nil
 	}
 	return "", false, fmt.Errorf("unknown catalog %q", s)
 }
@@ -62,8 +62,11 @@ type Schema struct {
 
 // TableSchema describes one table.
 type TableSchema struct {
-	Name    string
-	Columns []ColumnSchema
+	Name string
+	// PrimaryKey lists column names that form the primary key, in
+	// order. Empty when the table has no declared primary key.
+	PrimaryKey []string
+	Columns    []ColumnSchema
 }
 
 // ColumnSchema describes one column.
@@ -98,18 +101,26 @@ type Result struct {
 func Build(name Name, lo *googlesql.LanguageOptions, tf *googlesql.TypeFactory) (*Result, error) {
 	switch name {
 	case "", None:
-		return buildSimple(&Schema{Name: "none"}, lo, tf)
+		return buildSimple(&Schema{Name: "none"}, lo, tf, nil)
 	case Sample:
-		return buildSimple(sampleSchema(), lo, tf)
+		return buildSimple(sampleSchema(), lo, tf, nil)
 	case TPCH:
-		return buildSimple(tpchSchema(), lo, tf)
+		return buildSimple(tpchSchema(), lo, tf, nil)
 	case TPCHGraph:
-		return nil, fmt.Errorf("catalog %q: not supported by this Go port", name)
+		return buildTPCHGraph(lo, tf)
 	}
 	return nil, fmt.Errorf("unknown catalog %q", name)
 }
 
-func buildSimple(schema *Schema, lo *googlesql.LanguageOptions, tf *googlesql.TypeFactory) (*Result, error) {
+// buildSimple registers all tables from schema in a fresh
+// SimpleCatalog. The optional postBuild hook is invoked with the
+// freshly-built SimpleTables (keyed by lower-cased name) before they
+// are handed to the catalog, so callers (currently buildTPCHGraph)
+// can attach extra columns while the table handles are still
+// addressable. After AddOwnedTable, goccy clears the table pointer to
+// prevent double-free, so any further mutation has to happen through
+// the catalog instead — which goccy does not currently expose.
+func buildSimple(schema *Schema, lo *googlesql.LanguageOptions, tf *googlesql.TypeFactory, postBuild func(map[string]*googlesql.SimpleTable) error) (*Result, error) {
 	cat, err := googlesql.NewSimpleCatalog(schema.Name, tf)
 	if err != nil {
 		return nil, fmt.Errorf("new simple catalog %q: %w", schema.Name, err)
@@ -117,11 +128,21 @@ func buildSimple(schema *Schema, lo *googlesql.LanguageOptions, tf *googlesql.Ty
 	if err := cat.AddBuiltinFunctionsAndTypes(&googlesql.BuiltinFunctionOptions{LanguageOptions: lo}); err != nil {
 		return nil, fmt.Errorf("add builtins: %w", err)
 	}
+	tables := make(map[string]*googlesql.SimpleTable, len(schema.Tables))
 	for _, ts := range schema.Tables {
 		tbl, err := buildTable(ts, tf)
 		if err != nil {
 			return nil, err
 		}
+		tables[strings.ToLower(ts.Name)] = tbl
+	}
+	if postBuild != nil {
+		if err := postBuild(tables); err != nil {
+			return nil, err
+		}
+	}
+	for _, ts := range schema.Tables {
+		tbl := tables[strings.ToLower(ts.Name)]
 		if err := cat.AddOwnedTable(tbl); err != nil {
 			return nil, fmt.Errorf("add table %q: %w", ts.Name, err)
 		}
@@ -134,7 +155,8 @@ func buildTable(ts TableSchema, tf *googlesql.TypeFactory) (*googlesql.SimpleTab
 	if err != nil {
 		return nil, fmt.Errorf("new simple table %q: %w", ts.Name, err)
 	}
-	for _, c := range ts.Columns {
+	colIndex := make(map[string]int32, len(ts.Columns))
+	for i, c := range ts.Columns {
 		typ, err := tf.MakeSimpleType(c.Kind)
 		if err != nil {
 			return nil, fmt.Errorf("type for %s.%s: %w", ts.Name, c.Name, err)
@@ -145,6 +167,20 @@ func buildTable(ts TableSchema, tf *googlesql.TypeFactory) (*googlesql.SimpleTab
 		}
 		if err := tbl.AddColumn(col); err != nil {
 			return nil, fmt.Errorf("add column %s.%s: %w", ts.Name, c.Name, err)
+		}
+		colIndex[strings.ToLower(c.Name)] = int32(i)
+	}
+	if len(ts.PrimaryKey) > 0 {
+		idx := make([]int32, len(ts.PrimaryKey))
+		for i, name := range ts.PrimaryKey {
+			j, ok := colIndex[strings.ToLower(name)]
+			if !ok {
+				return nil, fmt.Errorf("primary key for %s: column %q not in table", ts.Name, name)
+			}
+			idx[i] = j
+		}
+		if err := tbl.SetPrimaryKey(idx); err != nil {
+			return nil, fmt.Errorf("set primary key for %s: %w", ts.Name, err)
 		}
 	}
 	return tbl, nil
@@ -157,6 +193,9 @@ func (t *TableSchema) Format() string {
 	fmt.Fprintf(&b, "Table %s:\n", t.Name)
 	for _, c := range t.Columns {
 		fmt.Fprintf(&b, "  %s %s\n", c.Name, typeKindName(c.Kind))
+	}
+	if len(t.PrimaryKey) > 0 {
+		fmt.Fprintf(&b, "Primary key: (%s)\n", strings.Join(t.PrimaryKey, ", "))
 	}
 	return b.String()
 }
