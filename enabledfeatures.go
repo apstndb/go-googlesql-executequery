@@ -49,11 +49,20 @@ const (
 	// FeatureBaseDefaults uses NewLanguageOptions's defaults
 	// (no-op; the LanguageOptions starts in the defaults state).
 	//
-	// NOTE: upstream's DEFAULTS is computed from a separate
-	// classification metadata. goccy/go-googlesql does not expose
-	// that classification, so we treat DEFAULTS as the
-	// NewLanguageOptions zero state. This matches in-practice but
-	// may diverge from upstream for fringe features.
+	// Workaround for goccy/go-googlesql v0.2.1: upstream's DEFAULTS
+	// is computed from per-feature `default_enabled` classification
+	// metadata that goccy does not expose.
+	//
+	// Natural code:
+	//   for _, f := range googlesql.AllLanguageFeatures() {
+	//       if f.IsDefaultEnabled() { lo.EnableLanguageFeature(f) }
+	//   }
+	//
+	// Instead, we treat DEFAULTS as the NewLanguageOptions zero
+	// state. This matches in-practice but may diverge from upstream
+	// for fringe features. Unblocked when goccy exports a
+	// `LanguageFeature.IsDefaultEnabled()` (or equivalent
+	// classification accessor).
 	FeatureBaseDefaults
 
 	// FeatureBaseDefaultsMinusDev — see FeatureBaseDefaults caveat.

@@ -14,15 +14,26 @@ import (
 // third_party/googlesql/googlesql/examples/tpch/catalog/tpch_catalog.cc
 // (AddJoinColumns / AddJoinColumn / AddOneJoinColumn).
 //
-// Known gap vs upstream: upstream attaches a
+// Workaround for goccy/go-googlesql v0.2.1: upstream attaches a
 // Column::JoinColumnAttributes to each pseudo-column so the analyzer
-// can reason about the join. goccy/go-googlesql v0.2.1 exports the
-// OptionalJoinColumnAttributes handle but not its constructor or any
-// SimpleColumn setter for it, so the pseudo-columns we register carry
-// no JoinColumnAttributes. Walking the pseudo-columns
+// can reason about the join. goccy exports the
+// OptionalJoinColumnAttributes handle type but not its constructor or
+// any SimpleColumn setter, so we cannot attach the attribute.
+//
+// Natural code (mirroring tpch_catalog.cc:384-396):
+//
+//	col := googlesql.NewSimpleColumn(table, name, rowType, true, false)
+//	col.SetJoinColumnAttributes(googlesql.NewJoinColumnAttributes(
+//	    boundColumns, sourceTable, sourceColumns, isMultiRow))
+//
+// Instead, the pseudo-columns we register carry no
+// JoinColumnAttributes. Walking the pseudo-columns
 // (`Customer.Orders`) still resolves through the type system via the
 // RowType, but operations that depend on JoinColumnAttributes (e.g.
 // upstream's join-flattening rewrite) will not behave identically.
+// Unblocked when goccy exports a JoinColumnAttributes constructor and
+// a `SimpleColumn.SetJoinColumnAttributes` setter (or accepts an
+// `Attributes`-style struct in `NewSimpleColumn`).
 func buildTPCHGraph(lo *googlesql.LanguageOptions, tf *googlesql.TypeFactory) (*Result, error) {
 	schema := tpchSchema()
 	schema.Name = "tpch_graph"

@@ -38,9 +38,17 @@ const (
 
 	// RewriteBaseDefaults uses NewAnalyzerOptions's defaults.
 	//
-	// NOTE: see FeatureBaseDefaults — goccy/go-googlesql does not
-	// expose the in-development classification, so DEFAULTS is best
-	// effort.
+	// Workaround for goccy/go-googlesql v0.2.1: upstream's DEFAULTS
+	// reads each rewrite's `default_enabled` flag, which goccy does
+	// not expose. See FeatureBaseDefaults for the same shape.
+	//
+	// Natural code:
+	//   for _, rw := range googlesql.AllResolvedASTRewrites() {
+	//       if rw.IsDefaultEnabled() { ao.EnableRewrite(rw, true) }
+	//   }
+	//
+	// Instead, DEFAULTS is treated as the NewAnalyzerOptions zero
+	// state. Unblocked alongside FeatureBaseDefaults.
 	RewriteBaseDefaults
 
 	// RewriteBaseDefaultsMinusDev — see RewriteBaseDefaults caveat.
@@ -100,9 +108,20 @@ func (rs RewriteSet) Apply(ao *googlesql.AnalyzerOptions) error {
 			}
 		}
 	case RewriteBaseAll, RewriteBaseAllMinusDev:
-		// goccy/go-googlesql does not classify rewrites as
-		// in-development vs general-availability, so ALL and
-		// ALL_MINUS_DEV both enable everything we know about.
+		// Workaround for goccy/go-googlesql v0.2.1: rewrites are not
+		// classified as in-development vs general-availability, so
+		// ALL and ALL_MINUS_DEV both enable everything we know about.
+		//
+		// Natural code:
+		//   for _, rw := range googlesql.AllResolvedASTRewrites() {
+		//       if base == RewriteBaseAllMinusDev && rw.IsInDevelopment() {
+		//           continue
+		//       }
+		//       ao.EnableRewrite(rw, true)
+		//   }
+		//
+		// Unblocked when goccy exports an `IsInDevelopment()`
+		// classifier on `ResolvedASTRewrite`.
 		for _, rw := range allResolvedASTRewrites {
 			if err := ao.EnableRewrite(rw, true); err != nil {
 				return fmt.Errorf("enable %s: %w", rw, err)

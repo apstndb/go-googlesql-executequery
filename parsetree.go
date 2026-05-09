@@ -10,12 +10,18 @@ import (
 // parseTreeDebugString walks an AST rooted at root and emits a
 // hierarchical pretty-print using each node's SingleNodeDebugString.
 //
-// goccy/go-googlesql does not expose upstream's full
-// `ASTNode::DebugString()` (which recurses internally and produces
-// upstream's canonical parse-tree text). Until it does, we walk the
-// tree manually with NumChildren / Child and indent per depth,
-// which produces semantically equivalent output without trying to
-// byte-match upstream's exact format.
+// Workaround for goccy/go-googlesql v0.2.1: the recursive
+// `ASTNode::DebugString()` upstream uses for `--mode=parse` output is
+// not exposed.
+//
+// Natural code:
+//
+//	text, err := root.DebugString()
+//
+// Instead, we walk the tree manually with NumChildren / Child and
+// indent per depth, which produces semantically equivalent output
+// without trying to byte-match upstream's exact format. Unblocked
+// when goccy exports `ASTNode.DebugString()`.
 func parseTreeDebugString(root googlesql.ASTNode) (string, error) {
 	var b strings.Builder
 	if err := walkPrintAST(&b, root, 0); err != nil {

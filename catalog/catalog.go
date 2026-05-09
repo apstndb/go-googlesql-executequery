@@ -54,7 +54,27 @@ func ParseName(s string) (Name, bool, error) {
 // Schema is a Go-side description of a Catalog. We carry it
 // alongside the *googlesql.SimpleCatalog so DESCRIBE and other
 // metadata reads do not have to round-trip through the wasm
-// boundary (which does not currently expose FindTable).
+// boundary.
+//
+// Workaround for goccy/go-googlesql v0.2.1:
+// `SimpleCatalog.FindTable` (and equivalent table-list accessors that
+// hand back a usable handle) are not exposed, so once a SimpleTable
+// has been registered via `AddOwnedTable` we cannot read its columns
+// back through the catalog.
+//
+// Natural code:
+//
+//	tbl, _ := cat.FindTable("Foo")
+//	for i := int32(0); i < tbl.NumColumns(); i++ {
+//	    col, _ := tbl.GetColumn(i)
+//	    name, _ := col.Name()
+//	    typ,  _ := col.GetType()
+//	    ...
+//	}
+//
+// Instead, we keep an immutable Go-side mirror of the schema.
+// Unblocked when goccy exports `SimpleCatalog.FindTable` (and the
+// `Column`/`Type` getters needed to render upstream-format output).
 type Schema struct {
 	Name   string
 	Tables []TableSchema
@@ -128,16 +148,30 @@ func Build(name Name, lo *googlesql.LanguageOptions, tf *googlesql.TypeFactory) 
 // lower-cased schema-table name to its handle. After buildSimple
 // returns from the hook, AddOwnedTable is called for every schema
 // table — extras the hook AddOwnedTabled itself are *not* re-added.
+//
+// Workaround for goccy/go-googlesql v0.2.1:
+// SimpleCatalog.AddOwnedTable calls clearPtrAny(table) on its argument
+// after the wasm round-trip, leaving any retained *SimpleTable handle
+// null. The pre-AddOwnedTable hook is the only safe place to mutate
+// tables.
+//
+// Natural code:
+//
+//	cat.AddOwnedTable(tbl)
+//	tbl.AddColumn(...)              // or, equivalently:
+//	live, _ := cat.FindTable("Foo")  // then live.AddColumn(...)
+//
+// Instead, callers must populate tables fully before AddOwnedTable, or
+// AddOwnedTable in their own hook. Unblocked when goccy either stops
+// clearing the handle or exposes SimpleCatalog.FindTable so we can
+// retrieve a live handle after registration.
 type PostBuild func(cat *googlesql.SimpleCatalog, schema *Schema, tables map[string]*googlesql.SimpleTable, tf *googlesql.TypeFactory) error
 
 // buildSimple registers all tables from schema in a fresh
 // SimpleCatalog. The optional postBuild hook runs after the schema
 // tables are built but before AddOwnedTable, so callers can attach
 // extra columns to live SimpleTable handles, register a
-// DescriptorPool, or AddOwnedTable extra tables of their own. After
-// AddOwnedTable, goccy clears the table pointer to prevent
-// double-free, so any further mutation has to happen through the
-// catalog instead — which goccy does not currently expose.
+// DescriptorPool, or AddOwnedTable extra tables of their own.
 func buildSimple(schema *Schema, lo *googlesql.LanguageOptions, tf *googlesql.TypeFactory, postBuild PostBuild) (*Result, error) {
 	cat, err := googlesql.NewSimpleCatalog(schema.Name, tf)
 	if err != nil {

@@ -140,6 +140,32 @@ Clone exploratory clones into `.tmp/` (gitignored). Do not commit
 them. The submodule under `third_party/googlesql` is the only
 pinned-by-this-repo dependency.
 
+## Workaround comment convention
+
+Whenever code works around a missing or buggy `goccy/go-googlesql`
+API, the comment at the workaround site must spell out **what the
+natural code would be** if the API behaved as expected, so future
+readers can grep and so the workaround is easy to revert when
+upstream lands a fix.
+
+Use this shape (a `Workaround:` block, with a `Natural code:` line
+showing the call we wish we could make and a follow-on explaining
+what we do instead):
+
+```go
+// Workaround for goccy/go-googlesql v0.2.1: <one-line bug summary>.
+//
+// Natural code:
+//   <2-3 lines of the obvious goccy call we would make>
+//
+// Instead, <what this code does and why> Unblocked when:
+// <upstream change that lets us delete the workaround>.
+```
+
+The error / `--help` strings under `unsupported.go` follow a
+parallel "what / why / unblocked when" shape; reuse the same
+phrasing so users and code readers see consistent reasoning.
+
 ## goccy/go-googlesql gotchas
 
 Quirks of `goccy/go-googlesql` v0.2.1 that are not obvious from the

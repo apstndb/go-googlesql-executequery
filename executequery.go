@@ -47,11 +47,19 @@ func Run(ctx context.Context, sql string, cfg Config, w Writer) error {
 	if err != nil {
 		return fmt.Errorf("new parser options: %w", err)
 	}
-	// goccy/go-googlesql v0.2.1: ParserOptions.SetLanguageOptions
-	// silently *moves-from* its argument on the wasm side, leaving the
-	// caller's *LanguageOptions handle pointing at a default-constructed
-	// instance (no language features enabled). To keep the analyzer's
-	// LO usable, hand the parser its own freshly-built copy.
+	// Workaround for goccy/go-googlesql v0.2.1:
+	// ParserOptions.SetLanguageOptions silently *moves-from* its
+	// argument on the wasm side, leaving the caller's
+	// *LanguageOptions handle pointing at a default-constructed
+	// instance (no language features enabled).
+	//
+	// Natural code:
+	//   po.SetLanguageOptions(lo)   // share the same LO with the analyzer
+	//
+	// Instead, we build a dedicated parserLO so the analyzer's LO
+	// survives unchanged. Unblocked when goccy either copies the
+	// argument or documents the move-from semantics so callers can opt
+	// in.
 	parserLO, err := cfg.buildLanguageOptions()
 	if err != nil {
 		return err
@@ -285,9 +293,18 @@ func (s *runState) runScriptMode() error {
 				return err
 			}
 		case ModeAnalyze:
-			// Script-level analysis would need a script evaluator
-			// (which goccy/go-googlesql does not expose). Surface a
-			// clear message instead of silently skipping.
+			// Workaround for goccy/go-googlesql v0.2.1: script-level
+			// analysis needs the script-evaluator entry point
+			// (upstream's `AnalyzeScript`), which goccy does not
+			// expose.
+			//
+			// Natural code:
+			//   out, err := googlesql.AnalyzeScript(s.sql, s.ao, s.cat.Catalog, s.tf)
+			//   for _, st := range out.ResolvedStatements() { ... }
+			//
+			// Instead, surface a clear placeholder. Unblocked when
+			// goccy exports `AnalyzeScript` (or an equivalent
+			// per-script analyzer).
 			if err := s.w.Resolved("(analyze in script mode requires a script evaluator that is not exposed by goccy/go-googlesql; emit per-statement parse / analyze instead)"); err != nil {
 				return err
 			}
