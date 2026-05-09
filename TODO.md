@@ -91,10 +91,22 @@ spell out the precise upstream change that unblocks each one.
 
 ## Catalog completeness (pure Go-side work)
 
-- [ ] Extend `catalog/sample.go` with the proto / enum / struct
-      tables from upstream `sample_catalog_impl.cc`
-      (`TestTable`, `EnumTable`, `ZZZ_AmbiguousHasTestTable`, etc.)
-      once Go-side proto descriptor handling is designed.
+- [~] Proto / enum / struct sample tables — design complete and a
+      demo subset shipped. `catalog/sample_proto.go` hand-builds a
+      `descriptorpb.FileDescriptorProto` for `zetasql_test`
+      (`TestEnum` + `KitchenSinkPB` with `int64_val` / `string_val` /
+      `test_enum`), wires it through `goccy.NewDescriptorPool` →
+      `BuildFile` → `FindMessageTypeByName` /
+      `FindEnumTypeByName` → `TypeFactory.MakeProtoType` /
+      `MakeEnumType`, then registers `TestTable` and `EnumTable` with
+      proto- and enum-typed columns. DESCRIBE prints
+      `PROTO<…>` / `ENUM<…>` labels; analyze of `KitchenSink.int64_val`
+      resolves through `GetProtoField`. The remaining upstream tables
+      (`ZZZ_AmbiguousHasTestTable`, `Proto3Table`, `MapFieldTable`,
+      `CivilTimeTestTable`, `FieldFormatsTable`, etc.) are not yet
+      ported — bringing them in needs the corresponding upstream
+      `*.proto` definitions, which would expand the
+      `third_party/googlesql` sparse checkout. Track as follow-up.
 - [x] Primary keys: `TableSchema` now carries `PrimaryKey []string`,
       `buildTable` calls `SimpleTable.SetPrimaryKey`, and
       `Format()` prints `Primary key: (...)`. tpch_schema and the

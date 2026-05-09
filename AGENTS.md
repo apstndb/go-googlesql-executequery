@@ -108,6 +108,23 @@ Adding a catalog ⇒ hand-port the schema into `catalog/` (no row
 data needed; data is unused without an evaluator). Add a unit test
 asserting each registered table resolves through `analyze`.
 
+For catalogs that need types beyond the scalar `TypeKind` set —
+proto messages, enums, structs — register them through the
+`PostBuild` hook on `buildSimple`. The hook receives the freshly
+constructed `*SimpleCatalog`, the `*Schema` (mutate it to mirror
+extra tables into DESCRIBE output), the per-table `SimpleTable`
+handle map, and the `*TypeFactory`. From the hook you can:
+`SetDescriptorPool` to attach a `*googlesql.DescriptorPool` populated
+via `NewFileDescriptorProto.ParseFromString` + `BuildFile`; resolve
+`*Descriptor`/`*EnumDescriptor` via `FindMessageTypeByName`/
+`FindEnumTypeByName`; build types via `TypeFactory.MakeProtoType`/
+`MakeEnumType`/`MakeStructType`; and `AddOwnedTable` directly for
+tables that don't fit the Schema → buildTable flow.
+`catalog/sample_proto.go` is the reference implementation —
+hand-builds a minimal `descriptorpb.FileDescriptorProto` (no protoc
+dep), so `google.golang.org/protobuf` is the only Go-side dependency
+this path adds.
+
 ## Cache directory
 
 Always resolve through `cache.Default()` or honour `--cache_dir`.

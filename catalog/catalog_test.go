@@ -114,6 +114,64 @@ func TestTPCHPrimaryKeys(t *testing.T) {
 	}
 }
 
+func TestSampleProtoTables(t *testing.T) {
+	t.Parallel()
+	lo, err := googlesql.NewLanguageOptions()
+	if err != nil {
+		t.Fatalf("NewLanguageOptions: %v", err)
+	}
+	if err := lo.EnableMaximumLanguageFeatures(); err != nil {
+		t.Fatalf("EnableMaximumLanguageFeatures: %v", err)
+	}
+	tf, err := googlesql.NewTypeFactory()
+	if err != nil {
+		t.Fatalf("NewTypeFactory: %v", err)
+	}
+	res, err := catalog.Build(catalog.Sample, lo, tf)
+	if err != nil {
+		t.Fatalf("Build(sample): %v", err)
+	}
+
+	for _, name := range []string{"TestTable", "EnumTable"} {
+		ts, ok := res.Schema.FindTable(name)
+		if !ok {
+			t.Errorf("schema missing %q", name)
+			continue
+		}
+		if !strings.Contains(ts.Format(), "ENUM<zetasql_test.TestEnum>") {
+			t.Errorf("%s.Format() missing enum label:\n%s", name, ts.Format())
+		}
+	}
+
+	ao, err := googlesql.NewAnalyzerOptions(lo)
+	if err != nil {
+		t.Fatalf("NewAnalyzerOptions: %v", err)
+	}
+	// Walk a proto field via dotted notation; this exercises GetProtoField
+	// resolution end-to-end through the goccy DescriptorPool wiring.
+	out, err := googlesql.AnalyzeStatement(
+		"SELECT key, TestEnum, KitchenSink.int64_val, KitchenSink.test_enum FROM TestTable",
+		ao, res.Catalog, tf,
+	)
+	if err != nil {
+		t.Fatalf("AnalyzeStatement(TestTable): %v", err)
+	}
+	resolved, err := out.ResolvedStatement()
+	if err != nil {
+		t.Fatalf("ResolvedStatement: %v", err)
+	}
+	dbg, err := resolved.DebugString()
+	if err != nil {
+		t.Fatalf("DebugString: %v", err)
+	}
+	if !strings.Contains(dbg, "GetProtoField") {
+		t.Errorf("resolved AST missing GetProtoField (proto wiring may be broken):\n%s", dbg)
+	}
+	if !strings.Contains(dbg, "zetasql_test.KitchenSinkPB") {
+		t.Errorf("resolved AST missing proto FQN:\n%s", dbg)
+	}
+}
+
 func TestBuildTPCHGraph(t *testing.T) {
 	lo, err := googlesql.NewLanguageOptions()
 	if err != nil {

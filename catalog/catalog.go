@@ -73,6 +73,10 @@ type TableSchema struct {
 type ColumnSchema struct {
 	Name string
 	Kind googlesql.TypeKind
+	// TypeName overrides the type label rendered by Format() (and is
+	// used for non-scalar types like PROTO<...> / ENUM<...> that the
+	// Kind enum cannot describe alone). Empty for simple types.
+	TypeName string
 }
 
 // FindTable looks up a table by name (case-insensitive). Mirrors
@@ -103,7 +107,7 @@ func Build(name Name, lo *googlesql.LanguageOptions, tf *googlesql.TypeFactory) 
 	case "", None:
 		return buildSimple(&Schema{Name: "none"}, lo, tf, nil)
 	case Sample:
-		return buildSimple(sampleSchema(), lo, tf, nil)
+		return buildSimple(sampleSchema(), lo, tf, sampleProtoPostBuild)
 	case TPCH:
 		return buildSimple(tpchSchema(), lo, tf, nil)
 	case TPCHGraph:
@@ -112,15 +116,29 @@ func Build(name Name, lo *googlesql.LanguageOptions, tf *googlesql.TypeFactory) 
 	return nil, fmt.Errorf("unknown catalog %q", name)
 }
 
+// PostBuild is the per-catalog hook invoked after schema.Tables are
+// constructed but before they are handed to the SimpleCatalog. It can
+// mutate the freshly-built SimpleTables (e.g. add pseudo-columns,
+// see tpch_graph) and/or attach extras to the catalog directly
+// (e.g. SetDescriptorPool, AddType, AddOwnedTable for proto-typed
+// tables that don't fit the Schema → buildTable flow).
+//
+// schema is the catalog's Schema; the hook may append to schema.Tables
+// to surface the extra tables in DESCRIBE output. tables maps
+// lower-cased schema-table name to its handle. After buildSimple
+// returns from the hook, AddOwnedTable is called for every schema
+// table — extras the hook AddOwnedTabled itself are *not* re-added.
+type PostBuild func(cat *googlesql.SimpleCatalog, schema *Schema, tables map[string]*googlesql.SimpleTable, tf *googlesql.TypeFactory) error
+
 // buildSimple registers all tables from schema in a fresh
-// SimpleCatalog. The optional postBuild hook is invoked with the
-// freshly-built SimpleTables (keyed by lower-cased name) before they
-// are handed to the catalog, so callers (currently buildTPCHGraph)
-// can attach extra columns while the table handles are still
-// addressable. After AddOwnedTable, goccy clears the table pointer to
-// prevent double-free, so any further mutation has to happen through
-// the catalog instead — which goccy does not currently expose.
-func buildSimple(schema *Schema, lo *googlesql.LanguageOptions, tf *googlesql.TypeFactory, postBuild func(map[string]*googlesql.SimpleTable) error) (*Result, error) {
+// SimpleCatalog. The optional postBuild hook runs after the schema
+// tables are built but before AddOwnedTable, so callers can attach
+// extra columns to live SimpleTable handles, register a
+// DescriptorPool, or AddOwnedTable extra tables of their own. After
+// AddOwnedTable, goccy clears the table pointer to prevent
+// double-free, so any further mutation has to happen through the
+// catalog instead — which goccy does not currently expose.
+func buildSimple(schema *Schema, lo *googlesql.LanguageOptions, tf *googlesql.TypeFactory, postBuild PostBuild) (*Result, error) {
 	cat, err := googlesql.NewSimpleCatalog(schema.Name, tf)
 	if err != nil {
 		return nil, fmt.Errorf("new simple catalog %q: %w", schema.Name, err)
@@ -128,8 +146,14 @@ func buildSimple(schema *Schema, lo *googlesql.LanguageOptions, tf *googlesql.Ty
 	if err := cat.AddBuiltinFunctionsAndTypes(&googlesql.BuiltinFunctionOptions{LanguageOptions: lo}); err != nil {
 		return nil, fmt.Errorf("add builtins: %w", err)
 	}
-	tables := make(map[string]*googlesql.SimpleTable, len(schema.Tables))
-	for _, ts := range schema.Tables {
+	// Snapshot the schema-table list before the hook runs so that
+	// hooks which mirror catalog-only tables back into schema (e.g.
+	// the sample catalog's proto/enum tables, registered directly via
+	// cat.AddOwnedTable inside the hook) don't make this loop try to
+	// re-add them.
+	originalTables := schema.Tables
+	tables := make(map[string]*googlesql.SimpleTable, len(originalTables))
+	for _, ts := range originalTables {
 		tbl, err := buildTable(ts, tf)
 		if err != nil {
 			return nil, err
@@ -137,11 +161,11 @@ func buildSimple(schema *Schema, lo *googlesql.LanguageOptions, tf *googlesql.Ty
 		tables[strings.ToLower(ts.Name)] = tbl
 	}
 	if postBuild != nil {
-		if err := postBuild(tables); err != nil {
+		if err := postBuild(cat, schema, tables, tf); err != nil {
 			return nil, err
 		}
 	}
-	for _, ts := range schema.Tables {
+	for _, ts := range originalTables {
 		tbl := tables[strings.ToLower(ts.Name)]
 		if err := cat.AddOwnedTable(tbl); err != nil {
 			return nil, fmt.Errorf("add table %q: %w", ts.Name, err)
@@ -192,7 +216,11 @@ func (t *TableSchema) Format() string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "Table %s:\n", t.Name)
 	for _, c := range t.Columns {
-		fmt.Fprintf(&b, "  %s %s\n", c.Name, typeKindName(c.Kind))
+		label := c.TypeName
+		if label == "" {
+			label = typeKindName(c.Kind)
+		}
+		fmt.Fprintf(&b, "  %s %s\n", c.Name, label)
 	}
 	if len(t.PrimaryKey) > 0 {
 		fmt.Fprintf(&b, "Primary key: (%s)\n", strings.Join(t.PrimaryKey, ", "))

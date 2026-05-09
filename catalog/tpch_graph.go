@@ -50,7 +50,7 @@ func buildTPCHGraph(lo *googlesql.LanguageOptions, tf *googlesql.TypeFactory) (*
 		{"Supplier", "LineItem", []string{"S_SUPPKEY"}, []string{"L_SUPPKEY"}, false, true},
 	}
 
-	postBuild := func(tables map[string]*googlesql.SimpleTable) error {
+	postBuild := func(_ *googlesql.SimpleCatalog, _ *Schema, tables map[string]*googlesql.SimpleTable, _ *googlesql.TypeFactory) error {
 		for _, j := range joins {
 			t1 := tables[strings.ToLower(j.t1)]
 			t2 := tables[strings.ToLower(j.t2)]
