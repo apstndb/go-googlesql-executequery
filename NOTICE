@@ -1,0 +1,19 @@
+go-googlesql-executequery
+Copyright 2026 The go-googlesql-executequery Authors
+
+This product includes software derived from:
+
+  google/googlesql (https://github.com/google/googlesql)
+  Copyright Google LLC, licensed under the Apache License, Version 2.0.
+
+  Files under third_party/googlesql/ are taken verbatim from that project
+  via a git submodule pinned to a specific upstream commit. See LICENSE.
+
+This product depends on:
+
+  goccy/go-googlesql (https://github.com/goccy/go-googlesql)
+  Copyright Masaaki Goshima, licensed under the MIT License.
+
+The CLI flag help strings under cmd/execute_query/flags.go are copied
+verbatim from the third_party/googlesql ABSL_FLAG declarations to keep
+flag documentation byte-identical with upstream `execute_query`.

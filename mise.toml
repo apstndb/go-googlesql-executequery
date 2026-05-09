@@ -1,0 +1,32 @@
+[tools]
+# Track goccy/go-googlesql's go.mod requirement.
+go = "1.26"
+golangci-lint = "2.12.2"
+
+[tasks.fmt]
+description = "Format Go sources (golangci-lint fmt; gofumpt from .golangci.yml)"
+run = "golangci-lint fmt ./..."
+
+[tasks.lint]
+description = "Run golangci-lint"
+run = "golangci-lint run ./..."
+
+[tasks.lint-fix]
+description = "Run golangci-lint with --fix (local; CI uses lint without --fix)"
+run = "golangci-lint run --fix ./..."
+
+[tasks.test]
+description = "Run unit tests"
+run = "go test ./..."
+
+[tasks."test:corpus"]
+description = "Run corpus golden tests against third_party/googlesql/googlesql/examples"
+run = "go test -tags=corpus ./cmd/execute_query/..."
+
+[tasks.build]
+description = "Build the execute_query binary"
+run = "go build -o bin/execute_query ./cmd/execute_query"
+
+[tasks.ci]
+description = "Full CI pipeline (lint + test + build)"
+depends = ["lint", "test", "build"]

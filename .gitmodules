@@ -1,0 +1,6 @@
+[submodule "third_party/googlesql"]
+	path = third_party/googlesql
+	url = https://github.com/google/googlesql.git
+	# Sparse-checkout is configured locally in
+	# .git/modules/third_party/googlesql/info/sparse-checkout (see README).
+	# We track only the directories the build / tests / docs need.

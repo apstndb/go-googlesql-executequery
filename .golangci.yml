@@ -1,0 +1,39 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: standard
+  enable:
+    - modernize
+  settings:
+    gosec:
+      excludes:
+        # G304: file inclusions via variable - we resolve user-specified
+        # cache directories deliberately and validate them in cache.Default.
+        - G304
+        # G101: false positive on the verbatim upstream help text for
+        # --web ("Run a local webserver to execute queries.") which
+        # contains the substring "webserver" that triggers the rule.
+        - G101
+        # G204: subprocess calls in CLI tests are intentional (we
+        # exec the freshly-built binary). Tests aren't shipped in
+        # release builds.
+        - G204
+    revive:
+      rules:
+        - name: package-comments
+          disabled: true
+
+issues:
+  max-issues-per-linter: 0
+  max-same-issues: 0
+
+formatters:
+  enable:
+    - gofumpt
+  settings:
+    gofumpt:
+      module-path: github.com/apstndb/go-googlesql-executequery
+      extra-rules: true

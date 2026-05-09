@@ -1,0 +1,32 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+      - uses: actions/cache@v4
+        with:
+          path: ${{ runner.os == 'macOS' && format('{0}/Library/Caches/go-googlesql-executequery/wazero', env.HOME) || format('{0}/.cache/go-googlesql-executequery/wazero', env.HOME) }}
+          key: wazero-${{ runner.os }}-${{ hashFiles('go.sum') }}
+          restore-keys: |
+            wazero-${{ runner.os }}-
+      - run: mise run ci
+      - run: mise run test:corpus
