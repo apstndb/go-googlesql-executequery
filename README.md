@@ -4,7 +4,7 @@ A Go-native port of upstream
 [`google/googlesql`](https://github.com/google/googlesql)'s
 [`execute_query`](https://github.com/google/googlesql/blob/master/execute_query.md)
 tool, built on top of
-[`goccy/go-googlesql`](https://github.com/goccy/go-googlesql) (pure-Go
+[`go-googlesql`](https://github.com/goccy/go-googlesql) (pure-Go
 GoogleSQL bindings via wazero — no cgo).
 
 This repository ships:
@@ -16,7 +16,7 @@ This repository ships:
 
 ## Status
 
-`goccy/go-googlesql` only exposes parser and analyzer functionality;
+`go-googlesql` only exposes parser and analyzer functionality;
 its compiled `googlesql.wasm` does not yet ship a reference evaluator
 or a Resolved-AST → SQL builder. As a result this port supports three
 of the upstream tool's six modes today:
@@ -26,9 +26,9 @@ of the upstream tool's six modes today:
 | `parse`     | supported     |
 | `unparse`   | supported     |
 | `analyze`   | supported     |
-| `unanalyze` | not supported (no `SQLBuilder` exposed by `goccy/go-googlesql`) |
-| `explain`   | not supported (no reference evaluator exposed by `goccy/go-googlesql`) |
-| `execute`   | not supported (no reference evaluator exposed by `goccy/go-googlesql`) |
+| `unanalyze` | not supported (no `SQLBuilder` exposed by `go-googlesql`) |
+| `explain`   | not supported (no reference evaluator exposed by `go-googlesql`) |
+| `execute`   | not supported (no reference evaluator exposed by `go-googlesql`) |
 
 Every upstream `execute_query` flag is recognised by the CLI; flags
 that depend on the unsupported modes return a structured error rather

@@ -9,10 +9,10 @@ import (
 // constant so callers can errors.Is the category and end users see
 // the upstream-blocking detail in the message.
 var (
-	ErrUnsupportedMode    = errors.New("mode not supported by goccy/go-googlesql")
-	ErrUnsupportedSQLMode = errors.New("sql_mode not supported by goccy/go-googlesql")
-	ErrUnsupportedCatalog = errors.New("catalog not supported by goccy/go-googlesql")
-	ErrUnsupportedFlag    = errors.New("flag not supported by goccy/go-googlesql")
+	ErrUnsupportedMode    = errors.New("mode not supported by go-googlesql")
+	ErrUnsupportedSQLMode = errors.New("sql_mode not supported by go-googlesql")
+	ErrUnsupportedCatalog = errors.New("catalog not supported by go-googlesql")
+	ErrUnsupportedFlag    = errors.New("flag not supported by go-googlesql")
 )
 
 // Per-feature reason strings.
@@ -30,36 +30,36 @@ var (
 // converts a Resolved AST back to SQL via SQLBuilder, with optional
 // dialect selection through `--target_syntax`.
 //
-// Why unsupported: goccy/go-googlesql does not export SQLBuilder or
+// Why unsupported: go-googlesql does not export SQLBuilder or
 // any other Resolved → SQL function.
 //
-// Unblocked when: goccy/go-googlesql exposes a Resolved → SQL builder
+// Unblocked when: go-googlesql exposes a Resolved → SQL builder
 // (tracked at: TBD upstream issue once filed).
 const ReasonModeUnanalyze = "" +
-	"the unanalyze mode (Resolved AST → SQL via SQLBuilder) is not exposed by goccy/go-googlesql"
+	"the unanalyze mode (Resolved AST → SQL via SQLBuilder) is not exposed by go-googlesql"
 
 // ReasonModeExplain: upstream's `explain` mode prints the reference
 // implementation's evaluator query plan for a resolved statement.
 //
-// Why unsupported: goccy/go-googlesql does not export the reference
+// Why unsupported: go-googlesql does not export the reference
 // evaluator (no PreparedQuery / PreparedStatement / Evaluator
 // constructors are public).
 //
-// Unblocked when: goccy/go-googlesql exposes the reference evaluator
+// Unblocked when: go-googlesql exposes the reference evaluator
 // (or at least its plan-string output).
 const ReasonModeExplain = "" +
-	"the explain mode requires the reference evaluator, which goccy/go-googlesql does not expose"
+	"the explain mode requires the reference evaluator, which go-googlesql does not expose"
 
 // ReasonModeExecute: upstream's `execute` mode runs the statement
 // through the reference implementation's evaluator and renders rows.
 //
 // Why unsupported: same as ReasonModeExplain — the reference
-// evaluator is not exposed by goccy/go-googlesql.
+// evaluator is not exposed by go-googlesql.
 //
-// Unblocked when: goccy/go-googlesql exposes PreparedQuery /
+// Unblocked when: go-googlesql exposes PreparedQuery /
 // PreparedStatement (or equivalent execution primitives).
 const ReasonModeExecute = "" +
-	"the execute mode requires the reference evaluator, which goccy/go-googlesql does not expose"
+	"the execute mode requires the reference evaluator, which go-googlesql does not expose"
 
 // ReasonFlagTargetSyntax: upstream's `--target_syntax` selects the
 // SQL dialect produced by the unanalyze mode (`standard` or `pipe`).
@@ -84,13 +84,13 @@ const ReasonFlagUseBoxGlyphs = "" +
 // Why unsupported: the parse / analyze modes use upstream's own
 // DebugString text format. Emitting AST or Resolved nodes as
 // textproto / json would require Serialize(*Proto) on the AST and
-// Resolved node types, which goccy/go-googlesql does not expose.
+// Resolved node types, which go-googlesql does not expose.
 //
-// Unblocked when: goccy/go-googlesql exposes Serialize on AST and
+// Unblocked when: go-googlesql exposes Serialize on AST and
 // Resolved node types (or the project commits to an in-process
 // visitor implementation, which is significant work).
 const ReasonFlagOutputMode = "" +
-	"--output_mode is execute-only; AST/Resolved Serialize is not exposed by goccy/go-googlesql"
+	"--output_mode is execute-only; AST/Resolved Serialize is not exposed by go-googlesql"
 
 // ReasonFlagTableSpec: upstream's `--table_spec` registers tables
 // from CSV / binproto / textproto files for execute mode to query.
@@ -106,14 +106,14 @@ const ReasonFlagTableSpec = "" +
 //
 // Why unsupported: the C++ generated pool relies on protoc-compiled
 // types linked into the upstream binary. Crossing the wasm boundary
-// requires extra plumbing in goccy/go-googlesql to register Go
+// requires extra plumbing in go-googlesql to register Go
 // proto descriptors with the wasm runtime.
 //
-// Unblocked when: goccy/go-googlesql exposes a way to register a Go
+// Unblocked when: go-googlesql exposes a way to register a Go
 // (protoreflect / google.golang.org/protobuf) descriptor pool with
 // the wasm runtime.
 const ReasonFlagDescriptorPool = "" +
-	"--descriptor_pool requires wasm-boundary descriptor-pool plumbing, which goccy/go-googlesql does not expose"
+	"--descriptor_pool requires wasm-boundary descriptor-pool plumbing, which go-googlesql does not expose"
 
 // ReasonFlagEvaluatorMaxValue: upstream's
 // `--evaluator_max_value_byte_size` caps per-Value memory in execute
@@ -152,12 +152,12 @@ const ReasonFlagMaxStatementsToExecute = "" +
 // ReasonFlagImportPath: upstream's `--import_path` adds directories
 // to search for IMPORT MODULE.
 //
-// Why unsupported: goccy/go-googlesql does not expose ModuleFactory,
+// Why unsupported: go-googlesql does not expose ModuleFactory,
 // so resolution of IMPORT MODULE statements cannot be wired through.
 //
-// Unblocked when: goccy/go-googlesql exposes ModuleFactory.
+// Unblocked when: go-googlesql exposes ModuleFactory.
 const ReasonFlagImportPath = "" +
-	"--import_path requires ModuleFactory, which goccy/go-googlesql does not expose"
+	"--import_path requires ModuleFactory, which go-googlesql does not expose"
 
 // ReasonFlagWeb: upstream's `--web` runs a local HTTP server with a
 // query-and-execute UI.

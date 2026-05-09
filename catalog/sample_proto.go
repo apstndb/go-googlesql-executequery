@@ -8,10 +8,21 @@ import (
 	"google.golang.org/protobuf/types/descriptorpb"
 )
 
-// Demo proto schema used by the sample catalog. Hand-built via
-// descriptorpb (no protoc dependency) so the dev-tool surface stays
-// minimal; if upstream parity ever becomes a goal, swap this out for
-// embedded descriptor bytes generated from `googlesql/testdata/*.proto`.
+// Demo proto schema used by the sample catalog.
+//
+// Implementation note (not a workaround): the descriptor-loading
+// path used here (`descriptorpb.FileDescriptorProto` → `proto.Marshal`
+// → `googlesql.NewFileDescriptorProto.ParseFromString` →
+// `DescriptorPool.BuildFile`) IS the natural binding of the upstream
+// C++ idiom: `google::protobuf::DescriptorPool::BuildFile(
+// const FileDescriptorProto&)` takes wire-format bytes deserialised
+// into a FileDescriptorProto, and that is exactly what this code
+// does. The choice we made is upstream of that — we *hand-build* the
+// FileDescriptorProto via `descriptorpb` (no protoc dev-tool
+// dependency), keeping the schema in Go source so the demo is
+// self-contained. If upstream parity ever becomes a goal, swap this
+// out for embedded descriptor bytes generated from
+// `googlesql/testdata/*.proto` via protoc.
 //
 // The package name and a representative subset of fields mirror
 // upstream `sample_catalog_impl.cc` so analyzer-test queries that
@@ -25,7 +36,7 @@ const (
 )
 
 // sampleProtoFullName returns the fully-qualified proto name (the
-// "package.LocalName" form goccy expects when looking up types).
+// "package.LocalName" form go-googlesql expects when looking up types).
 func sampleProtoFullName(local string) string {
 	return sampleProtoPackage + "." + local
 }
@@ -86,7 +97,7 @@ func buildSampleFileDescriptorWire() ([]byte, error) {
 //
 // Mirrored into schema.Tables for DESCRIBE, but those entries are
 // purely descriptive — the catalog's SimpleTable for each is built
-// directly here and goccy clears the handle on AddOwnedTable.
+// directly here and go-googlesql clears the handle on AddOwnedTable.
 func sampleProtoPostBuild(cat *googlesql.SimpleCatalog, schema *Schema, _ map[string]*googlesql.SimpleTable, tf *googlesql.TypeFactory) error {
 	wire, err := buildSampleFileDescriptorWire()
 	if err != nil {

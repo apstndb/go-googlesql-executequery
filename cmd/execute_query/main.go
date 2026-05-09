@@ -1,6 +1,6 @@
 // Command execute_query is a Go-native port of upstream
 // google/googlesql's execute_query tool, layered on top of
-// goccy/go-googlesql.
+// go-googlesql.
 package main
 
 import (

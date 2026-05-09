@@ -22,23 +22,17 @@ type QueryParameter struct {
 // ParseParameters parses upstream's `--parameters` flag format,
 // `name=literal,name=literal,...`.
 //
-// Type inference rules cover the literal forms upstream's parser
-// accepts most often; complex literals like array / struct / NUMERIC
-// return an error.
-//
-// Workaround for goccy/go-googlesql v0.2.1: upstream parses each
-// parameter literal through the analyzer and infers the type from
-// the resolved expression, but goccy does not expose an
-// `AnalyzeExpression`-style literal parser we can call here.
-//
-// Natural code:
-//
-//	expr, err := googlesql.AnalyzeExpression(literal, ao, catalog, tf)
-//	typ := expr.ResolvedExpr().Type()
-//
-// Instead, we hand-recognise the common literal shapes below.
-// Unblocked when goccy exposes a literal-only analyze path (or
-// surfaces enough of `AnalyzeExpression` that we can use it here).
+// Implementation note (not a workaround): upstream
+// `googlesql::AnalyzeExpression`
+// (third_party/googlesql/googlesql/public/analyzer.h:127) is the
+// general path for inferring a parameter literal's type, and
+// go-googlesql does expose it — but routing parameter parsing
+// through the analyzer would require constructing an AnalyzerOptions
+// + Catalog + TypeFactory just to type a `42` or a `'foo'`. Until we
+// have a real need for richer literal forms (array / struct /
+// NUMERIC / etc.), the simple regex-style recognition below is
+// cheaper and easier to read; switch to AnalyzeExpression when the
+// trade-off flips.
 //
 //	42        → INT64
 //	3.14      → DOUBLE

@@ -8,7 +8,7 @@ import googlesql "github.com/goccy/go-googlesql"
 // The Go port stores no row data; the catalog is usable only for
 // parse / analyze. (Upstream's selectable `tpch` catalog ships
 // 1 MB of CSV data plus a CSV reader; the reference evaluator that
-// would consume it is not exposed by goccy/go-googlesql.)
+// would consume it is not exposed by go-googlesql.)
 //
 // Column types and primary keys match upstream describe.txt exactly.
 func tpchSchema() *Schema {

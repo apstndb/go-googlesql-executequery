@@ -13,7 +13,7 @@ import (
 // the GoogleSQL parser/analyzer state, and dispatches sql through
 // each requested Mode for each statement, emitting via w.
 //
-// Run does not initialise goccy/go-googlesql; callers must call
+// Run does not initialise go-googlesql; callers must call
 // cache.Setup or googlesql.Init once before the first call.
 func Run(ctx context.Context, sql string, cfg Config, w Writer) error {
 	if err := cfg.Validate(); err != nil {
@@ -47,19 +47,25 @@ func Run(ctx context.Context, sql string, cfg Config, w Writer) error {
 	if err != nil {
 		return fmt.Errorf("new parser options: %w", err)
 	}
-	// Workaround for goccy/go-googlesql v0.2.1:
+	// Workaround for go-googlesql v0.2.1:
 	// ParserOptions.SetLanguageOptions silently *moves-from* its
 	// argument on the wasm side, leaving the caller's
 	// *LanguageOptions handle pointing at a default-constructed
 	// instance (no language features enabled).
 	//
-	// Natural code:
+	// Upstream C++ API: googlesql::ParserOptions::set_language_options
+	// (LanguageOptions language_options) at
+	// third_party/googlesql/googlesql/parser/parser.h:123 — note
+	// upstream takes the argument by value, so a Go binding that
+	// faithfully mirrors C++ would copy under the hood.
+	//
+	// Natural Go code:
 	//   po.SetLanguageOptions(lo)   // share the same LO with the analyzer
 	//
 	// Instead, we build a dedicated parserLO so the analyzer's LO
-	// survives unchanged. Unblocked when goccy either copies the
-	// argument or documents the move-from semantics so callers can opt
-	// in.
+	// survives unchanged. Unblocked when go-googlesql either copies the
+	// argument (matching the C++ by-value contract) or documents the
+	// move-from semantics so callers can opt in.
 	parserLO, err := cfg.buildLanguageOptions()
 	if err != nil {
 		return err
@@ -293,19 +299,19 @@ func (s *runState) runScriptMode() error {
 				return err
 			}
 		case ModeAnalyze:
-			// Workaround for goccy/go-googlesql v0.2.1: script-level
-			// analysis needs the script-evaluator entry point
-			// (upstream's `AnalyzeScript`), which goccy does not
-			// expose.
-			//
-			// Natural code:
-			//   out, err := googlesql.AnalyzeScript(s.sql, s.ao, s.cat.Catalog, s.tf)
-			//   for _, st := range out.ResolvedStatements() { ... }
-			//
-			// Instead, surface a clear placeholder. Unblocked when
-			// goccy exports `AnalyzeScript` (or an equivalent
-			// per-script analyzer).
-			if err := s.w.Resolved("(analyze in script mode requires a script evaluator that is not exposed by goccy/go-googlesql; emit per-statement parse / analyze instead)"); err != nil {
+			// Not yet implemented: per-statement analyze on a parsed
+			// script. There is no `AnalyzeScript` symbol upstream
+			// (third_party/googlesql/googlesql/public/analyzer.h has
+			// AnalyzeStatement / AnalyzeStatementFromParserAST /
+			// AnalyzeNextStatement / AnalyzeExpression but no
+			// script-level entry); upstream callers iterate the
+			// `ASTScript`'s `StatementListNode().GetChildren()` and
+			// call `AnalyzeStatementFromParserAST` per statement.
+			// `go-googlesql` exposes the same primitives
+			// (`ParserOutput.Script`, `ASTScript.StatementListNode`,
+			// `AnalyzeStatementFromParserAST`), so this is a missing
+			// implementation rather than a binding gap.
+			if err := s.w.Resolved("(analyze in script mode is not yet implemented in this Go port; emit per-statement parse / analyze instead)"); err != nil {
 				return err
 			}
 		}

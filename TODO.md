@@ -24,7 +24,7 @@ into `unsupported.go` reason constants or commit messages.
 
 - [ ] Replace each "(tracked at: TBD upstream issue once filed)" in
       `unsupported.go` with a real link, after filing the issues
-      against `goccy/go-googlesql`.
+      against `go-googlesql`.
 - [x] Flesh out `RELEASING.md` with concrete CI-verification steps
       (which workflow to watch, how to retry on flake, etc.).
 - [x] Add a usage example block to `cmd/execute_query/main.go`'s
@@ -72,17 +72,17 @@ spell out the precise upstream change that unblocks each one.
       passes `--enabled_language_features=ALL_MINUS_DEV,+FEATURE_ROW_TYPE`
       (mirrors upstream's requirement, called out in `--help`).
 
-      Found and fixed a goccy v0.2.1 footgun while wiring this:
+      Found and fixed a go-googlesql v0.2.1 footgun while wiring this:
       `ParserOptions.SetLanguageOptions` *moves-from* its argument on
       the wasm side, leaving the caller's `*LanguageOptions` handle
       pointing at a default-constructed instance with no features
       enabled. `executequery.go:55-61` now builds a dedicated
       `parserLO` so the analyzer's LO survives unchanged. File this
-      upstream against `goccy/go-googlesql` so the move-from semantics
+      upstream against `go-googlesql` so the move-from semantics
       are documented (or fixed to copy).
 
       Known residual gap: `OptionalJoinColumnAttributes` is exported
-      by goccy v0.2.1 but with no constructor or `SimpleColumn`
+      by go-googlesql v0.2.1 but with no constructor or `SimpleColumn`
       setter, so we cannot attach the upstream
       `Column::JoinColumnAttributes`. Pseudo-col walks resolve via the
       RowType, but anything that depends on JoinColumnAttributes (e.g.
@@ -95,7 +95,7 @@ spell out the precise upstream change that unblocks each one.
       demo subset shipped. `catalog/sample_proto.go` hand-builds a
       `descriptorpb.FileDescriptorProto` for `zetasql_test`
       (`TestEnum` + `KitchenSinkPB` with `int64_val` / `string_val` /
-      `test_enum`), wires it through `goccy.NewDescriptorPool` →
+      `test_enum`), wires it through `go-googlesql.NewDescriptorPool` →
       `BuildFile` → `FindMessageTypeByName` /
       `FindEnumTypeByName` → `TypeFactory.MakeProtoType` /
       `MakeEnumType`, then registers `TestTable` and `EnumTable` with

@@ -56,10 +56,10 @@ Supported: `parse`, `unparse`, `analyze` (alias `resolve`).
 
 Unsupported (return `ErrUnsupportedMode`):
 
-- `unanalyze` / `sql_builder` — `goccy/go-googlesql` does not export
+- `unanalyze` / `sql_builder` — `go-googlesql` does not export
   `SQLBuilder`. Unblocked when upstream exposes a Resolved → SQL
   function.
-- `explain` — `goccy/go-googlesql` does not export the reference
+- `explain` — `go-googlesql` does not export the reference
   evaluator. Unblocked when upstream ships `PreparedQuery` /
   `PreparedStatement`.
 - `execute` — same as `explain`.
@@ -99,7 +99,7 @@ those pseudo-columns requires
 `--enabled_language_features=ALL_MINUS_DEV,+FEATURE_ROW_TYPE` (the
 `--catalog` help text says so). The
 `Column::JoinColumnAttributes` upstream attaches to each pseudo-column
-is **not** set — `goccy.OptionalJoinColumnAttributes` has no exported
+is **not** set — `go-googlesql.OptionalJoinColumnAttributes` has no exported
 constructor or `SimpleColumn` setter — so behaviour that relies on
 those attributes (e.g. upstream's join-flattening rewrite) will
 diverge.
@@ -130,7 +130,7 @@ this path adds.
 Always resolve through `cache.Default()` or honour `--cache_dir`.
 Never write under `/tmp` or the current working directory.
 
-The cache subdir is keyed by the linked `goccy/go-googlesql` module
+The cache subdir is keyed by the linked `go-googlesql` module
 version (read from `runtime/debug.ReadBuildInfo`) — the wasm ABI
 binds to upstream, not to this wrapper.
 
@@ -142,33 +142,49 @@ pinned-by-this-repo dependency.
 
 ## Workaround comment convention
 
-Whenever code works around a missing or buggy `goccy/go-googlesql`
-API, the comment at the workaround site must spell out **what the
-natural code would be** if the API behaved as expected, so future
-readers can grep and so the workaround is easy to revert when
-upstream lands a fix.
+`go-googlesql` is a binding to upstream `google/googlesql` (C++).
+Whenever code works around a missing or buggy `go-googlesql` API
+the comment at the workaround site must:
 
-Use this shape (a `Workaround:` block, with a `Natural code:` line
-showing the call we wish we could make and a follow-on explaining
-what we do instead):
+1. **Cite the upstream C++ symbol** that ought to be exposed (so the
+   "natural code" claim is verifiable, not speculative).
+2. **Show the natural Go code** that would call the bound form of
+   that symbol.
+3. **Spell out what we do instead** and the upstream change that
+   unblocks deletion of the workaround.
+
+Verify the upstream symbol against the pinned submodule before
+writing the comment:
+
+```sh
+cd third_party/googlesql && git cat-file -p HEAD:googlesql/<path>.h | grep -nE '<symbol>'
+```
+
+If upstream itself has no equivalent API, that's not a binding gap —
+write the comment as an implementation note, not a workaround.
+
+Use this shape:
 
 ```go
-// Workaround for goccy/go-googlesql v0.2.1: <one-line bug summary>.
+// Workaround for go-googlesql v0.2.1: <one-line bug summary>.
 //
-// Natural code:
-//   <2-3 lines of the obvious goccy call we would make>
+// Upstream C++ API: <fully-qualified C++ symbol(s)>
+//   (see third_party/googlesql/<path>.h).
 //
-// Instead, <what this code does and why> Unblocked when:
-// <upstream change that lets us delete the workaround>.
+// Natural Go code:
+//   <2-3 lines of the obvious bound call we would make>
+//
+// Instead, <what this code does and why> Unblocked when go-googlesql
+// exposes <Go binding shape>.
 ```
 
 The error / `--help` strings under `unsupported.go` follow a
 parallel "what / why / unblocked when" shape; reuse the same
 phrasing so users and code readers see consistent reasoning.
 
-## goccy/go-googlesql gotchas
+## go-googlesql gotchas
 
-Quirks of `goccy/go-googlesql` v0.2.1 that are not obvious from the
+Quirks of `go-googlesql` v0.2.1 that are not obvious from the
 public API and have already cost real debugging time:
 
 - `ParserOptions.SetLanguageOptions(lo)` *moves-from* its argument on
@@ -184,6 +200,6 @@ public API and have already cost real debugging time:
   populate them *before* calling `AddOwnedTable` (see the `postBuild`
   hook on `catalog.buildSimple`), or switch to `AddTable` and own the
   table from Go.
-- `goccy.OptionalJoinColumnAttributes` is exported but has no
+- `go-googlesql.OptionalJoinColumnAttributes` is exported but has no
   constructor or `SimpleColumn` setter. There is currently no way to
   attach `Column::JoinColumnAttributes` from Go.

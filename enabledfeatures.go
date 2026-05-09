@@ -49,20 +49,31 @@ const (
 	// FeatureBaseDefaults uses NewLanguageOptions's defaults
 	// (no-op; the LanguageOptions starts in the defaults state).
 	//
-	// Workaround for goccy/go-googlesql v0.2.1: upstream's DEFAULTS
-	// is computed from per-feature `default_enabled` classification
-	// metadata that goccy does not expose.
+	// Workaround for go-googlesql v0.2.1: upstream's DEFAULTS is
+	// computed from the `LanguageFeatureOptions.ideally_enabled`
+	// proto annotation (default true) on each enum value, which
+	// go-googlesql does not expose.
 	//
-	// Natural code:
-	//   for _, f := range googlesql.AllLanguageFeatures() {
-	//       if f.IsDefaultEnabled() { lo.EnableLanguageFeature(f) }
-	//   }
+	// Upstream C++ API:
+	//   - googlesql::LanguageOptions::GetLanguageFeaturesForVersion
+	//     (third_party/googlesql/googlesql/public/language_options.h:115)
+	//     returns the set of features for a given LanguageVersion.
+	//   - googlesql::LanguageFeatureOptions::ideally_enabled
+	//     (third_party/googlesql/googlesql/public/options.proto:89)
+	//     is the per-feature annotation read out of the
+	//     `LanguageFeature_descriptor()`'s value options.
+	//
+	// Natural Go code (one of):
+	//   set := googlesql.GetLanguageFeaturesForVersion(googlesql.LanguageVersionDefault)
+	//   for _, f := range set { lo.EnableLanguageFeature(f) }
+	//   // or, per-feature:
+	//   if f.IdeallyEnabled() { lo.EnableLanguageFeature(f) }
 	//
 	// Instead, we treat DEFAULTS as the NewLanguageOptions zero
 	// state. This matches in-practice but may diverge from upstream
-	// for fringe features. Unblocked when goccy exports a
-	// `LanguageFeature.IsDefaultEnabled()` (or equivalent
-	// classification accessor).
+	// for fringe features. Unblocked when go-googlesql exports the
+	// version-keyed feature-set helper or the per-feature
+	// `ideally_enabled` accessor.
 	FeatureBaseDefaults
 
 	// FeatureBaseDefaultsMinusDev — see FeatureBaseDefaults caveat.
@@ -170,11 +181,32 @@ func lookupLanguageFeature(name string) (googlesql.LanguageFeature, error) {
 	return 0, fmt.Errorf("unknown LanguageFeature %q", name)
 }
 
+// normalizeFeatureName collapses both go-googlesql's Go-style enum
+// name and upstream's `FEATURE_<SCREAMING_SNAKE>` flag spelling to
+// a common underscore-free upper-case key, so the same lookup map
+// matches whichever form the user types.
+//
+// Workaround for go-googlesql v0.2.1: the protobuf-generated name
+// accessor for the LanguageFeature enum is not exposed, so we cannot
+// translate between the user-facing `FEATURE_RANGE_TYPE` form and
+// the Go enum value directly.
+//
+// Upstream C++ API: protobuf-generated `googlesql::LanguageFeature_Name(
+// LanguageFeature)` returning the enum-value name from
+// `googlesql/public/options.proto`'s `enum LanguageFeature` (line 119).
+// (Companion `LanguageFeature_Parse(string, LanguageFeature*)` lets
+// callers go in the other direction.)
+//
+// Natural Go code:
+//
+//	for _, f := range googlesql.AllLanguageFeatures() {
+//	    if googlesql.LanguageFeature_Name(f) == name { return f, nil }
+//	}
+//
+// Instead, normalise both sides to the same underscore-free upper-
+// case key and look up. Unblocked when go-googlesql exposes the
+// protobuf-generated `LanguageFeature_Name` / `_Parse` helpers.
 func normalizeFeatureName(s string) string {
-	// Strip underscores and uppercase. The Go binding's enum names
-	// follow the form "LanguageFeatureFeature<CamelCase>", and
-	// upstream's names are "FEATURE_<SCREAMING_SNAKE>". Both
-	// collapse to the same underscore-free uppercase form.
 	var b strings.Builder
 	b.Grow(len(s))
 	for i := 0; i < len(s); i++ {

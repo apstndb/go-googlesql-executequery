@@ -4,8 +4,8 @@
 
 `v<go-googlesql-Major.Minor>.<YYYYMMDD>`.
 
-- `Major.Minor` follow the linked `goccy/go-googlesql` release. When
-  `goccy/go-googlesql` is at `v0.1.x`, this project releases as
+- `Major.Minor` follow the linked `go-googlesql` release. When
+  `go-googlesql` is at `v0.1.x`, this project releases as
   `v0.1.YYYYMMDD`. Bump to `v0.2.YYYYMMDD` when upstream moves to
   `v0.2.x`.
 - The patch component is the release date in `YYYYMMDD`.
@@ -16,10 +16,10 @@
 
 ## Steps
 
-1. Confirm `go.mod` is on the intended `goccy/go-googlesql` minor
+1. Confirm `go.mod` is on the intended `go-googlesql` minor
    line. Update with `go get` if needed and re-run `mise run ci`.
 2. Pin `third_party/googlesql` to the same upstream commit
-   `goccy/go-googlesql` is built from (see the upstream `README.md`'s
+   `go-googlesql` is built from (see the upstream `README.md`'s
    "Tracks GoogleSQL revision …" line). Commit any submodule bump.
 3. Decide the patch date:
    - Default: today's UTC date.

@@ -14,26 +14,41 @@ import (
 // third_party/googlesql/googlesql/examples/tpch/catalog/tpch_catalog.cc
 // (AddJoinColumns / AddJoinColumn / AddOneJoinColumn).
 //
-// Workaround for goccy/go-googlesql v0.2.1: upstream attaches a
+// Workaround for go-googlesql v0.2.1: upstream attaches a
 // Column::JoinColumnAttributes to each pseudo-column so the analyzer
-// can reason about the join. goccy exports the
+// can reason about the join. go-googlesql exports the
 // OptionalJoinColumnAttributes handle type but not its constructor or
-// any SimpleColumn setter, so we cannot attach the attribute.
+// any way to thread it through SimpleColumn construction.
 //
-// Natural code (mirroring tpch_catalog.cc:384-396):
+// Upstream C++ API: googlesql::SimpleColumn::Attributes
+// (third_party/googlesql/googlesql/public/simple_catalog.h:1180-1189)
+// is a struct passed *at construction* via the
+// `SimpleColumn(absl::string_view table_full_name, absl::string_view
+// name, const Type* type, Attributes attributes)` overload
+// (simple_catalog.h:1198-1214). The attribute fields are
+// `is_pseudo_column`, `is_writable_column`, and
+// `std::optional<JoinColumnAttributes> join_column`. The
+// construction-time pattern is what tpch_catalog.cc:384-396 uses.
 //
-//	col := googlesql.NewSimpleColumn(table, name, rowType, true, false)
-//	col.SetJoinColumnAttributes(googlesql.NewJoinColumnAttributes(
-//	    boundColumns, sourceTable, sourceColumns, isMultiRow))
+// Natural Go code (a constructor variant accepting Attributes):
+//
+//	col, _ := googlesql.NewSimpleColumnWithAttributes(
+//	    tableFullName, columnName, rowType,
+//	    googlesql.SimpleColumnAttributes{
+//	        IsPseudoColumn:   true,
+//	        IsWritableColumn: false,
+//	        JoinColumn: googlesql.NewJoinColumnAttributes(
+//	            boundColumns, sourceTable, sourceColumns, isMultiRow),
+//	    })
 //
 // Instead, the pseudo-columns we register carry no
 // JoinColumnAttributes. Walking the pseudo-columns
 // (`Customer.Orders`) still resolves through the type system via the
 // RowType, but operations that depend on JoinColumnAttributes (e.g.
 // upstream's join-flattening rewrite) will not behave identically.
-// Unblocked when goccy exports a JoinColumnAttributes constructor and
-// a `SimpleColumn.SetJoinColumnAttributes` setter (or accepts an
-// `Attributes`-style struct in `NewSimpleColumn`).
+// Unblocked when go-googlesql exposes the `Attributes`-taking
+// `SimpleColumn` constructor (and binds the
+// `JoinColumnAttributes` struct).
 func buildTPCHGraph(lo *googlesql.LanguageOptions, tf *googlesql.TypeFactory) (*Result, error) {
 	schema := tpchSchema()
 	schema.Name = "tpch_graph"

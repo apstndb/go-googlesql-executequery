@@ -148,7 +148,7 @@ func TestSampleProtoTables(t *testing.T) {
 		t.Fatalf("NewAnalyzerOptions: %v", err)
 	}
 	// Walk a proto field via dotted notation; this exercises GetProtoField
-	// resolution end-to-end through the goccy DescriptorPool wiring.
+	// resolution end-to-end through the go-googlesql DescriptorPool wiring.
 	out, err := googlesql.AnalyzeStatement(
 		"SELECT key, TestEnum, KitchenSink.int64_val, KitchenSink.test_enum FROM TestTable",
 		ao, res.Catalog, tf,

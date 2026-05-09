@@ -3,7 +3,7 @@
 // describe.txt files (see catalog/sample.go and catalog/tpch.go);
 // this Go port carries no row data, so the catalogs are usable only
 // for parse / analyze. The reference evaluator that consumes data
-// is not exposed by goccy/go-googlesql.
+// is not exposed by go-googlesql.
 package catalog
 
 import (
@@ -56,13 +56,22 @@ func ParseName(s string) (Name, bool, error) {
 // metadata reads do not have to round-trip through the wasm
 // boundary.
 //
-// Workaround for goccy/go-googlesql v0.2.1:
+// Workaround for go-googlesql v0.2.1:
 // `SimpleCatalog.FindTable` (and equivalent table-list accessors that
 // hand back a usable handle) are not exposed, so once a SimpleTable
 // has been registered via `AddOwnedTable` we cannot read its columns
 // back through the catalog.
 //
-// Natural code:
+// Upstream C++ API:
+//   - googlesql::Catalog::FindTable(absl::Span<const std::string>,
+//     const Table**)
+//   - googlesql::Table::GetColumn(int) / NumColumns()
+//   - googlesql::Column::GetType() / Name()
+//
+// (third_party/googlesql/googlesql/public/simple_catalog.h:76,
+// the `Catalog` base in catalog.h.)
+//
+// Natural Go code:
 //
 //	tbl, _ := cat.FindTable("Foo")
 //	for i := int32(0); i < tbl.NumColumns(); i++ {
@@ -73,7 +82,7 @@ func ParseName(s string) (Name, bool, error) {
 //	}
 //
 // Instead, we keep an immutable Go-side mirror of the schema.
-// Unblocked when goccy exports `SimpleCatalog.FindTable` (and the
+// Unblocked when go-googlesql exports `SimpleCatalog.FindTable` (and the
 // `Column`/`Type` getters needed to render upstream-format output).
 type Schema struct {
 	Name   string
@@ -149,22 +158,29 @@ func Build(name Name, lo *googlesql.LanguageOptions, tf *googlesql.TypeFactory) 
 // returns from the hook, AddOwnedTable is called for every schema
 // table — extras the hook AddOwnedTabled itself are *not* re-added.
 //
-// Workaround for goccy/go-googlesql v0.2.1:
+// Workaround for go-googlesql v0.2.1:
 // SimpleCatalog.AddOwnedTable calls clearPtrAny(table) on its argument
 // after the wasm round-trip, leaving any retained *SimpleTable handle
 // null. The pre-AddOwnedTable hook is the only safe place to mutate
 // tables.
 //
-// Natural code:
+// Upstream C++ API:
+// googlesql::SimpleCatalog::AddOwnedTable
+// (third_party/googlesql/googlesql/public/simple_catalog.h:184-192) —
+// upstream takes ownership of the unique_ptr but does not invalidate
+// any raw `Table*` aliases the caller may hold; live mutation through
+// such an alias is legal in C++.
+//
+// Natural Go code:
 //
 //	cat.AddOwnedTable(tbl)
 //	tbl.AddColumn(...)              // or, equivalently:
 //	live, _ := cat.FindTable("Foo")  // then live.AddColumn(...)
 //
 // Instead, callers must populate tables fully before AddOwnedTable, or
-// AddOwnedTable in their own hook. Unblocked when goccy either stops
-// clearing the handle or exposes SimpleCatalog.FindTable so we can
-// retrieve a live handle after registration.
+// AddOwnedTable in their own hook. Unblocked when go-googlesql either
+// stops clearing the handle or exposes `SimpleCatalog.FindTable` so we
+// can retrieve a live handle after registration.
 type PostBuild func(cat *googlesql.SimpleCatalog, schema *Schema, tables map[string]*googlesql.SimpleTable, tf *googlesql.TypeFactory) error
 
 // buildSimple registers all tables from schema in a fresh
@@ -262,9 +278,27 @@ func (t *TableSchema) Format() string {
 	return b.String()
 }
 
+// typeKindName renders a TypeKind as its upstream-style upper-case
+// name (e.g. INT64).
+//
+// Workaround for go-googlesql v0.2.1: there is no Go-side accessor
+// for the user-facing form of a TypeKind; only the Go enum's
+// `String()` method is exported, which returns "TypeKindTypeInt64".
+//
+// Upstream C++ API: googlesql::Type::TypeKindToString(TypeKind,
+// ProductMode, bool use_external_float32)
+// (third_party/googlesql/googlesql/public/types/type.h:572) —
+// returns the user-facing name ("INT64").
+//
+// Natural Go code:
+//
+//	name, _ := googlesql.TypeKindToString(k, googlesql.ProductModeProductInternal)
+//
+// Instead, strip the "TypeKindType" prefix from the Go enum's
+// `String()` output and upper-case the remainder. Unblocked when
+// go-googlesql exports `TypeKindToString` (or an equivalent
+// short-name accessor on TypeKind).
 func typeKindName(k googlesql.TypeKind) string {
-	// k.String() returns "TypeKindTypeFoo"; trim the prefix and
-	// upper-case for readability.
 	s := k.String()
 	s = strings.TrimPrefix(s, "TypeKindType")
 	return strings.ToUpper(s)

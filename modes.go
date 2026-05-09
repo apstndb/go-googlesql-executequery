@@ -10,7 +10,7 @@ const (
 	ModeParse Mode = "parse"
 
 	// ModeUnparse — parse the input and emit canonical SQL via
-	// goccy/go-googlesql.Unparse.
+	// go-googlesql.Unparse.
 	ModeUnparse Mode = "unparse"
 
 	// ModeAnalyze — analyze the input and emit upstream's resolved

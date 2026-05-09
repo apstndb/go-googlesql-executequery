@@ -1,12 +1,12 @@
 // Package cache resolves a safe, OS-appropriate wazero
-// compilation-cache directory for goccy/go-googlesql.
+// compilation-cache directory for go-googlesql.
 //
-// goccy/go-googlesql ships a ~13 MB wasm module that costs roughly
+// go-googlesql ships a ~13 MB wasm module that costs roughly
 // 3 s to compile to native code in CompilationModeCompiler. With a
 // warm cache pointed at a stable on-disk directory, subsequent
 // processes drop their Init() time to ~0.6 s. This package picks
 // that directory using os.UserCacheDir conventions, isolates the
-// cache per linked goccy/go-googlesql module version (so a
+// cache per linked go-googlesql module version (so a
 // dependency upgrade doesn't try to load stale precompiled wasm),
 // and refuses to write anywhere that could indicate a TOCTOU attack.
 package cache
@@ -31,7 +31,7 @@ const dependencyModulePath = "github.com/goccy/go-googlesql"
 
 // Default returns the canonical wazero cache directory for the
 // current user. The path is keyed by the linked
-// goccy/go-googlesql module version so an upgrade gets a fresh
+// go-googlesql module version so an upgrade gets a fresh
 // cache.
 //
 //	macOS:   ~/Library/Caches/go-googlesql-executequery/wazero/<ver>

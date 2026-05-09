@@ -38,17 +38,26 @@ const (
 
 	// RewriteBaseDefaults uses NewAnalyzerOptions's defaults.
 	//
-	// Workaround for goccy/go-googlesql v0.2.1: upstream's DEFAULTS
-	// reads each rewrite's `default_enabled` flag, which goccy does
-	// not expose. See FeatureBaseDefaults for the same shape.
+	// Workaround for go-googlesql v0.2.1: the static helper that
+	// returns upstream's DEFAULTS rewrite set is not exposed.
 	//
-	// Natural code:
-	//   for _, rw := range googlesql.AllResolvedASTRewrites() {
-	//       if rw.IsDefaultEnabled() { ao.EnableRewrite(rw, true) }
-	//   }
+	// Upstream C++ API:
+	// googlesql::AnalyzerOptions::DefaultRewrites() (static, returning
+	// `absl::btree_set<ResolvedASTRewrite>`) at
+	// third_party/googlesql/googlesql/public/analyzer_options.h:342.
+	// `enabled_rewrites = DefaultRewrites()` is what
+	// `NewAnalyzerOptions()` initialises with (analyzer_options.h:1067),
+	// so the post-construction state is already DEFAULTS — but we
+	// can't *recompute* the set later if the user mixes DEFAULTS with
+	// `+REWRITE_FOO` / `-REWRITE_BAR` modifiers.
+	//
+	// Natural Go code:
+	//   ao.SetEnabledRewrites(googlesql.DefaultRewrites())
 	//
 	// Instead, DEFAULTS is treated as the NewAnalyzerOptions zero
-	// state. Unblocked alongside FeatureBaseDefaults.
+	// state. Unblocked when go-googlesql exposes
+	// `AnalyzerOptions.DefaultRewrites` (or an equivalent static
+	// accessor).
 	RewriteBaseDefaults
 
 	// RewriteBaseDefaultsMinusDev — see RewriteBaseDefaults caveat.
@@ -108,20 +117,27 @@ func (rs RewriteSet) Apply(ao *googlesql.AnalyzerOptions) error {
 			}
 		}
 	case RewriteBaseAll, RewriteBaseAllMinusDev:
-		// Workaround for goccy/go-googlesql v0.2.1: rewrites are not
-		// classified as in-development vs general-availability, so
-		// ALL and ALL_MINUS_DEV both enable everything we know about.
+		// Workaround for go-googlesql v0.2.1: the per-rewrite
+		// `in_development` annotation is not exposed, so ALL and
+		// ALL_MINUS_DEV cannot be distinguished — both enable
+		// everything we know about.
 		//
-		// Natural code:
+		// Upstream C++ API:
+		// googlesql::ResolvedASTRewriteOptions::in_development
+		// (third_party/googlesql/googlesql/public/options.proto:94)
+		// is the per-enum-value annotation read out of the
+		// `ResolvedASTRewrite_descriptor()`'s value options.
+		//
+		// Natural Go code:
 		//   for _, rw := range googlesql.AllResolvedASTRewrites() {
-		//       if base == RewriteBaseAllMinusDev && rw.IsInDevelopment() {
+		//       if base == RewriteBaseAllMinusDev && rw.InDevelopment() {
 		//           continue
 		//       }
 		//       ao.EnableRewrite(rw, true)
 		//   }
 		//
-		// Unblocked when goccy exports an `IsInDevelopment()`
-		// classifier on `ResolvedASTRewrite`.
+		// Unblocked when go-googlesql exports an `InDevelopment()`
+		// (or equivalent annotation accessor) on `ResolvedASTRewrite`.
 		for _, rw := range allResolvedASTRewrites {
 			if err := ao.EnableRewrite(rw, true); err != nil {
 				return fmt.Errorf("enable %s: %w", rw, err)
@@ -174,16 +190,34 @@ var (
 	rewriteMapVal  map[string]googlesql.ResolvedASTRewrite
 )
 
+// rewriteMap caches the user-facing-name → ResolvedASTRewrite
+// lookup used by ParseRewriteSet.
+//
+// Workaround for go-googlesql v0.2.1: the protobuf-generated name
+// accessor for the ResolvedASTRewrite enum is not exposed, so we
+// strip the Go enum's `ResolvedASTRewriteRewrite` prefix manually.
+//
+// Upstream C++ API: protobuf-generated
+// `googlesql::ResolvedASTRewrite_Name(ResolvedASTRewrite)` from the
+// `enum ResolvedASTRewrite` in `googlesql/public/options.proto`. The
+// CLI strips the `REWRITE_` prefix per
+// `--enabled_ast_rewrites`'s upstream help string.
+//
+// Natural Go code:
+//
+//	for _, rw := range googlesql.AllResolvedASTRewrites() {
+//	    name := strings.TrimPrefix(googlesql.ResolvedASTRewrite_Name(rw), "REWRITE_")
+//	    if name == requested { return rw, nil }
+//	}
+//
+// Instead, derive the user-facing name from the Go String() spelling
+// and feed it through normalizeFeatureName for case/underscore
+// folding. Unblocked when go-googlesql exposes
+// `ResolvedASTRewrite_Name` / `_Parse`.
 func rewriteMap() map[string]googlesql.ResolvedASTRewrite {
 	rewriteMapOnce.Do(func() {
 		rewriteMapVal = make(map[string]googlesql.ResolvedASTRewrite, len(allResolvedASTRewrites))
 		for _, rw := range allResolvedASTRewrites {
-			// String() returns "ResolvedASTRewriteRewriteFoo"; strip
-			// the outer "ResolvedASTRewrite" prefix and the inner
-			// "Rewrite" prefix so the user-facing name matches
-			// upstream's "FOO" form (upstream's --enabled_ast_rewrites
-			// help: "Enum values must be listed with 'REWRITE_'
-			// stripped").
 			name := strings.TrimPrefix(rw.String(), "ResolvedASTRewrite")
 			name = strings.TrimPrefix(name, "Rewrite")
 			rewriteMapVal[normalizeFeatureName(name)] = rw
