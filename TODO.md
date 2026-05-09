@@ -8,13 +8,13 @@ into `unsupported.go` reason constants or commit messages.
 - [ ] Rename working directory `go-googlesql-executesql` → `go-googlesql-executequery`.
       The Go module path is already `…-executequery`; only the dir
       name on disk needs fixing.
-- [ ] Initial commit and push.
+- [x] Initial commit and push.
       Confirm there are no embedded secrets or stray cache directories
       first (`.tmp/` is gitignored; double-check `git status`).
-- [ ] Create the GitHub repo at `apstndb/go-googlesql-executequery` and
+- [x] Create the GitHub repo at `apstndb/go-googlesql-executequery` and
       push `main` plus the initial release tag.
-- [ ] Cut the first release: `v0.2.YYYYMMDD` (go-googlesql v0.2.x line).
-      See `RELEASING.md` for the carry-over rule.
+- [x] Cut the first release: `v0.2.YYYYMMDD` (go-googlesql v0.2.x line).
+      See `RELEASING.md` for the carry-over rule. (Shipped `v0.2.20260509`.)
 - [ ] Once CI is green on `main`, double-check the macOS leg covers
       the `cache.Default()` path that XDG-only Linux runners do not.
 
