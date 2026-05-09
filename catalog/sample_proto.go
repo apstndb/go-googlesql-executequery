@@ -10,7 +10,7 @@ import (
 
 // Demo proto schema used by the sample catalog.
 //
-// Implementation note (not a workaround): the descriptor-loading
+// Implementation note: the descriptor-loading
 // path used here (`descriptorpb.FileDescriptorProto` → `proto.Marshal`
 // → `googlesql.NewFileDescriptorProto.ParseFromString` →
 // `DescriptorPool.BuildFile`) IS the natural binding of the upstream

@@ -18,7 +18,7 @@ var (
 // process. The first caller's options win; subsequent calls return
 // the first call's error (or nil) without invoking Init again.
 //
-// Workaround for go-googlesql v0.2.1: `googlesql.Init` is itself
+// Workaround [go-googlesql v0.2.1]: `googlesql.Init` is itself
 // `sync.Once`-guarded, but its return value on second-and-later
 // calls is nil regardless of whether the first call failed, so a
 // caller that races Init cannot observe a stable error.

@@ -47,8 +47,7 @@ func Run(ctx context.Context, sql string, cfg Config, w Writer) error {
 	if err != nil {
 		return fmt.Errorf("new parser options: %w", err)
 	}
-	// Workaround for go-googlesql v0.2.1:
-	// ParserOptions.SetLanguageOptions silently *moves-from* its
+	// Workaround [go-googlesql v0.2.1]: ParserOptions.SetLanguageOptions silently *moves-from* its
 	// argument on the wasm side, leaving the caller's
 	// *LanguageOptions handle pointing at a default-constructed
 	// instance (no language features enabled).

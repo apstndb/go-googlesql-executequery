@@ -56,8 +56,7 @@ func ParseName(s string) (Name, bool, error) {
 // metadata reads do not have to round-trip through the wasm
 // boundary.
 //
-// Workaround for go-googlesql v0.2.1:
-// `SimpleCatalog.FindTable` (and equivalent table-list accessors that
+// Workaround [go-googlesql v0.2.1]: `SimpleCatalog.FindTable` (and equivalent table-list accessors that
 // hand back a usable handle) are not exposed, so once a SimpleTable
 // has been registered via `AddOwnedTable` we cannot read its columns
 // back through the catalog.
@@ -158,8 +157,7 @@ func Build(name Name, lo *googlesql.LanguageOptions, tf *googlesql.TypeFactory) 
 // returns from the hook, AddOwnedTable is called for every schema
 // table — extras the hook AddOwnedTabled itself are *not* re-added.
 //
-// Workaround for go-googlesql v0.2.1:
-// SimpleCatalog.AddOwnedTable calls clearPtrAny(table) on its argument
+// Workaround [go-googlesql v0.2.1]: SimpleCatalog.AddOwnedTable calls clearPtrAny(table) on its argument
 // after the wasm round-trip, leaving any retained *SimpleTable handle
 // null. The pre-AddOwnedTable hook is the only safe place to mutate
 // tables.
@@ -281,7 +279,7 @@ func (t *TableSchema) Format() string {
 // typeKindName renders a TypeKind as its upstream-style upper-case
 // name (e.g. INT64).
 //
-// Workaround for go-googlesql v0.2.1: there is no Go-side accessor
+// Workaround [go-googlesql v0.2.1]: there is no Go-side accessor
 // for the user-facing form of a TypeKind; only the Go enum's
 // `String()` method is exported, which returns "TypeKindTypeInt64".
 //

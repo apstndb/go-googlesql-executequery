@@ -38,7 +38,7 @@ const (
 
 	// RewriteBaseDefaults uses NewAnalyzerOptions's defaults.
 	//
-	// Workaround for go-googlesql v0.2.1: the static helper that
+	// Workaround [go-googlesql v0.2.1]: the static helper that
 	// returns upstream's DEFAULTS rewrite set is not exposed.
 	//
 	// Upstream C++ API:
@@ -117,7 +117,7 @@ func (rs RewriteSet) Apply(ao *googlesql.AnalyzerOptions) error {
 			}
 		}
 	case RewriteBaseAll, RewriteBaseAllMinusDev:
-		// Workaround for go-googlesql v0.2.1: the per-rewrite
+		// Workaround [go-googlesql v0.2.1]: the per-rewrite
 		// `in_development` annotation is not exposed, so ALL and
 		// ALL_MINUS_DEV cannot be distinguished — both enable
 		// everything we know about.
@@ -193,7 +193,7 @@ var (
 // rewriteMap caches the user-facing-name → ResolvedASTRewrite
 // lookup used by ParseRewriteSet.
 //
-// Workaround for go-googlesql v0.2.1: the protobuf-generated name
+// Workaround [go-googlesql v0.2.1]: the protobuf-generated name
 // accessor for the ResolvedASTRewrite enum is not exposed, so we
 // strip the Go enum's `ResolvedASTRewriteRewrite` prefix manually.
 //

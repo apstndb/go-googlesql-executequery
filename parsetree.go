@@ -10,7 +10,7 @@ import (
 // parseTreeDebugString walks an AST rooted at root and emits a
 // hierarchical pretty-print using each node's SingleNodeDebugString.
 //
-// Workaround for go-googlesql v0.2.1: the recursive multi-line
+// Workaround [go-googlesql v0.2.1]: the recursive multi-line
 // debug formatter upstream uses for `--mode=parse` output is not
 // exposed; only the per-node single-line formatter is.
 //

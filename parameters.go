@@ -22,7 +22,7 @@ type QueryParameter struct {
 // ParseParameters parses upstream's `--parameters` flag format,
 // `name=literal,name=literal,...`.
 //
-// Implementation note (not a workaround): upstream
+// Implementation note: upstream
 // `googlesql::AnalyzeExpression`
 // (third_party/googlesql/googlesql/public/analyzer.h:127) is the
 // general path for inferring a parameter literal's type, and

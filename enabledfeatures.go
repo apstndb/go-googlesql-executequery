@@ -49,7 +49,7 @@ const (
 	// FeatureBaseDefaults uses NewLanguageOptions's defaults
 	// (no-op; the LanguageOptions starts in the defaults state).
 	//
-	// Workaround for go-googlesql v0.2.1: upstream's DEFAULTS is
+	// Workaround [go-googlesql v0.2.1]: upstream's DEFAULTS is
 	// computed from the `LanguageFeatureOptions.ideally_enabled`
 	// proto annotation (default true) on each enum value, which
 	// go-googlesql does not expose.
@@ -186,7 +186,7 @@ func lookupLanguageFeature(name string) (googlesql.LanguageFeature, error) {
 // a common underscore-free upper-case key, so the same lookup map
 // matches whichever form the user types.
 //
-// Workaround for go-googlesql v0.2.1: the protobuf-generated name
+// Workaround [go-googlesql v0.2.1]: the protobuf-generated name
 // accessor for the LanguageFeature enum is not exposed, so we cannot
 // translate between the user-facing `FEATURE_RANGE_TYPE` form and
 // the Go enum value directly.

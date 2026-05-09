@@ -14,7 +14,7 @@ import (
 // third_party/googlesql/googlesql/examples/tpch/catalog/tpch_catalog.cc
 // (AddJoinColumns / AddJoinColumn / AddOneJoinColumn).
 //
-// Workaround for go-googlesql v0.2.1: upstream attaches a
+// Workaround [go-googlesql v0.2.1]: upstream attaches a
 // Column::JoinColumnAttributes to each pseudo-column so the analyzer
 // can reason about the join. go-googlesql exports the
 // OptionalJoinColumnAttributes handle type but not its constructor or

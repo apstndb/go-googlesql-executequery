@@ -166,7 +166,7 @@ write the comment as an implementation note, not a workaround.
 Use this shape:
 
 ```go
-// Workaround for go-googlesql v0.2.1: <one-line bug summary>.
+// Workaround [go-googlesql v0.2.1]: <one-line bug summary>.
 //
 // Upstream C++ API: <fully-qualified C++ symbol(s)>
 //   (see third_party/googlesql/<path>.h).
