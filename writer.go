@@ -41,29 +41,22 @@ type Writer interface {
 	FlushStatement(atEnd bool, errMsg string) error
 }
 
-// NewTextWriter returns a Writer that emits labeled sections to w.
+// NewTextWriter returns a Writer that emits plain-text CLI output to w.
 //
-// Output is plain text:
+// Parse and unparse modes stream output in the same layout as the upstream
+// C++ execute_query tool (parse tree with byte-offset spans, then a blank
+// line, then canonical SQL) rather than labeled `[parse]` / `[unparse]` sections.
 //
-//	[statement]
-//	  <SQL source line>
-//
-//	[parse]
-//	  <debug string>
-//
-//	[unparse]
-//	  <SQL>
-//
-//	[analyze]
-//	  <debug string>
-//
-//	[describe]
-//	  <description>
+// Analyze and describe output remain labeled (`[analyze]`, `[describe]`) for readability.
 func NewTextWriter(w io.Writer) Writer { return &textWriter{w: w} }
 
 type textWriter struct {
-	w     io.Writer
-	first bool // already emitted at least one section for the current statement
+	w io.Writer
+	// first is true after emitting any section in the current statement so the
+	// next labeled section (analyze/describe) is prefixed with a newline.
+	first bool
+	// parseEmitted is true after Parsed() until Unparsed() consumes the blank-line gap.
+	parseEmitted bool
 }
 
 func (t *textWriter) writeSection(label, body string) error {
@@ -81,10 +74,31 @@ func (t *textWriter) writeSection(label, body string) error {
 }
 
 func (t *textWriter) StatementText(text string) error { return t.writeSection("statement", text) }
-func (t *textWriter) Parsed(debug string) error       { return t.writeSection("parse", debug) }
-func (t *textWriter) Unparsed(sql string) error       { return t.writeSection("unparse", sql) }
-func (t *textWriter) Resolved(debug string) error     { return t.writeSection("analyze", debug) }
-func (t *textWriter) Described(text string) error     { return t.writeSection("describe", text) }
+func (t *textWriter) Parsed(debug string) error {
+	debug = trimTrailingNewlines(debug)
+	if _, err := fmt.Fprintf(t.w, "%s\n", debug); err != nil {
+		return err
+	}
+	t.first = true
+	t.parseEmitted = true
+	return nil
+}
+
+func (t *textWriter) Unparsed(sql string) error {
+	sql = trimTrailingNewlines(sql)
+	prefix := ""
+	if t.parseEmitted {
+		prefix = "\n"
+		t.parseEmitted = false
+	}
+	if _, err := fmt.Fprintf(t.w, "%s%s\n", prefix, sql); err != nil {
+		return err
+	}
+	t.first = true
+	return nil
+}
+func (t *textWriter) Resolved(debug string) error { return t.writeSection("analyze", debug) }
+func (t *textWriter) Described(text string) error { return t.writeSection("describe", text) }
 
 func (t *textWriter) StartStatement(isFirst bool) error {
 	if !isFirst {
@@ -93,6 +107,7 @@ func (t *textWriter) StartStatement(isFirst bool) error {
 		}
 	}
 	t.first = false
+	t.parseEmitted = false
 	return nil
 }
 

@@ -48,7 +48,7 @@ func TestRunSupportedModes(t *testing.T) {
 			name:     "parse",
 			cfg:      executequery.Config{Modes: []executequery.Mode{executequery.ModeParse}},
 			sql:      "SELECT 1+1",
-			wantSubs: []string{"QueryStatement", "BinaryExpression"},
+			wantSubs: []string{"QueryStatement [", "BinaryExpression"},
 		},
 		{
 			name:     "unparse",
