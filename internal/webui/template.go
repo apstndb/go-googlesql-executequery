@@ -218,14 +218,10 @@ hr {
         <label><input type="checkbox" name="mode" value="{{.Value}}"{{if .Checked}} checked{{end}}> {{.Label}}</label>
         {{- end}}
       </div>
-      {{/* Full checkbox markup matching upstream; wrapper hidden until supported. Unchecked boxes are not submitted. */}}
-      <div hidden class="webui-upcoming-tool-modes" title="Drop the hidden attribute when these modes are supported (today ErrUnsupportedMode).">
-        <div class="checkbox-group">
-          <label><input type="checkbox" name="mode" value="execute"> execute</label>
-          <label><input type="checkbox" name="mode" value="explain"> explain</label>
-          <label><input type="checkbox" name="mode" value="unanalyze"> unanalyze</label>
-        </div>
-      </div>
+      {{/* Upcoming tool modes: drop hidden from each control when supported (ErrUnsupportedMode). Unchecked => omitted from POST. */}}
+      <input type="checkbox" name="mode" value="execute" hidden class="webui-upcoming-tool-mode" title="Remove hidden when execute mode is supported.">
+      <input type="checkbox" name="mode" value="explain" hidden class="webui-upcoming-tool-mode" title="Remove hidden when explain mode is supported.">
+      <input type="checkbox" name="mode" value="unanalyze" hidden class="webui-upcoming-tool-mode" title="Remove hidden when unanalyze mode is supported.">
     </fieldset>
   </div>
   <div class="form-group">
@@ -256,8 +252,8 @@ hr {
           <label><input type="radio" name="target_syntax_mode" value="{{.Value}}"{{if .Checked}} checked{{end}}> {{.Label}}</label>
           {{- end}}
         </div>
-        {{/* Pipe radio matches upstream; label hidden until supported. With standard selected, pipe is not submitted. */}}
-        <label hidden class="webui-upcoming-target-syntax-pipe" title="Remove hidden when pipe syntax is supported (ErrUnsupportedFlag target_syntax)."><input type="radio" name="target_syntax_mode" value="pipe"> Pipe</label>
+        {{/* Pipe: drop hidden when supported (ErrUnsupportedFlag target_syntax). Standard stays checked so pipe is not submitted. */}}
+        <input type="radio" name="target_syntax_mode" value="pipe" hidden class="webui-upcoming-target-syntax-pipe" title="Remove hidden when pipe syntax is supported.">
       </fieldset>
     </div>
     <div class="form-group">

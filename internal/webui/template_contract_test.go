@@ -23,26 +23,19 @@ func TestPageTemplateUsesUrlEncodedFetchBody(t *testing.T) {
 
 func TestPageTemplateUpstreamOnlyModesUseHiddenUncheckedControls(t *testing.T) {
 	t.Parallel()
-	if !strings.Contains(pageTemplate, `webui-upcoming-tool-modes`) {
-		t.Fatal("expected wrapper for upcoming tool modes")
-	}
-	for _, pair := range []struct{ val, kind string }{
-		{"execute", "checkbox"},
-		{"explain", "checkbox"},
-		{"unanalyze", "checkbox"},
-	} {
-		// Require checkbox inputs with name=mode (unchecked); not type=hidden.
-		if !strings.Contains(pageTemplate, `<input type="`+pair.kind+`" name="mode" value="`+pair.val+`"`) {
-			t.Fatalf("expected checkbox name=mode value=%s", pair.val)
+	for _, val := range []string{"execute", "explain", "unanalyze"} {
+		needle := `<input type="checkbox" name="mode" value="` + val + `" hidden`
+		if !strings.Contains(pageTemplate, needle) {
+			t.Fatalf("expected hidden checkbox name=mode value=%s", val)
 		}
 	}
 	if strings.Contains(pageTemplate, `type="hidden" name="mode"`) {
-		t.Fatal("do not use hidden inputs named mode — use unchecked checkboxes inside a hidden wrapper")
+		t.Fatal("do not use type=hidden for mode — use unchecked checkbox with hidden attribute")
 	}
-	if !strings.Contains(pageTemplate, `webui-upcoming-target-syntax-pipe`) {
-		t.Fatal("expected wrapper label for pipe target syntax")
+	if !strings.Contains(pageTemplate, `<input type="radio" name="target_syntax_mode" value="pipe" hidden`) {
+		t.Fatal("expected hidden pipe radio (standard selected; pipe not submitted)")
 	}
-	if !strings.Contains(pageTemplate, `<input type="radio" name="target_syntax_mode" value="pipe"`) {
-		t.Fatal("expected pipe radio in group with standard (standard stays checked; pipe not submitted)")
+	if strings.Contains(pageTemplate, `webui-upcoming-tool-modes`) {
+		t.Fatal("drop redundant wrapper div — hidden lives on each control")
 	}
 }
