@@ -13,11 +13,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+// Form controls and text use explicit light-theme colours so the page does not
+// follow prefers-color-scheme: dark (native selects/text would otherwise clash
+// with upstream-style fixed palette).
+
+html {
+  color-scheme: light;
+}
 
 html, body {
   background-color: #f0f8ff;
   margin: 0;
   height: 100%;
+  color: #111;
 }
 
 body, p {
@@ -36,15 +44,21 @@ body, input, textarea, select {
   font-size: 1rem;
 }
 
-@media (prefers-color-scheme: dark) {
-  body {
-    filter: invert(90%) hue-rotate(180deg) contrast(105%);
-  }
+textarea,
+select {
+  background-color: #fff;
+  color: #111;
+  border: 1px solid #ccc;
 }
 
 select {
   padding: 0.3em;
   border-radius: 0.3em;
+}
+
+option {
+  background-color: #fff;
+  color: #111;
 }
 
 textarea, pre {
@@ -97,13 +111,6 @@ main {
   width: 32px;
   height: 32px;
   object-fit: cover;
-}
-
-/* Undos dark mode filter for avatar images */
-@media (prefers-color-scheme: dark) {
-  .avatar {
-    filter: invert(90%) hue-rotate(180deg) contrast(105%);
-  }
 }
 
 #header #share-link {
