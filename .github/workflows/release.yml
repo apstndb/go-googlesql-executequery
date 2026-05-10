@@ -36,11 +36,13 @@ jobs:
           ref: ${{ steps.meta.outputs.tag }}
           submodules: recursive
 
-      - uses: jdx/mise-action@v2
+      - uses: actions/setup-go@v5
         with:
-          experimental: true
+          go-version-file: go.mod
+          cache: true
 
-      - run: mise run generate
+      # Generated protobufs under internal/optionspb are committed; older tags do
+      # not define `mise run generate`, so we build without a protoc step.
 
       - name: Build release archives
         env:

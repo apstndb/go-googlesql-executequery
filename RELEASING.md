@@ -34,6 +34,7 @@
    uploads archives plus `SHA256SUMS` to the GitHub release, and names
    assets so [mise](https://mise.jdx.dev/dev-tools/backends/github.html)
    can pick the correct archive per OS/arch without extra configuration.
+   (Protobuf sources are generated offline and committed; the workflow does not run `protoc`.)
 
 ### Installing via mise (`github:` backend)
 
