@@ -55,14 +55,24 @@ spell out the precise upstream change that unblocks each one.
       registry) can be made available to the analyzer.
 - [ ] `--import_path` (IMPORT MODULE).
       Needs `ModuleFactory` exposed by go-googlesql.
-- [ ] `--web` and `--port`.
-      Serve a local HTTP UI for interactive query editing. The upstream
-      HTML/CSS templates live in `third_party/googlesql/googlesql/tools/
-      execute_query/web/` and can be embedded with Go `embed`. What is
-      missing is an `HTMLWriter` implementation of the `Writer` interface
-      and a web request handler that bridges HTTP form params to the
-      `Run` entry point. Does **not** require execute mode; a
-      parse/unparse/analyze-only UI is already useful.
+- [x] `--web` and `--port`.
+      Basic HTTP UI shipped. Uses a hand-written `html/template` page
+      (not the upstream CivetWeb/C++ templates) with a form for SQL,
+      mode checkboxes, and catalog selection. Results are rendered as
+      styled HTML via `internal/webui.HTMLWriter`.
+      
+      Known gaps / follow-up:
+      - [ ] Add headless-browser integration tests (e.g. chromedp or
+            playwright-go) that exercise the form submission and assert
+            on the rendered result HTML. Currently only tested manually.
+      - [ ] The `handleRun` endpoint returns raw HTML fragments; the
+            JavaScript `fetch` replaces `result.innerHTML`. This works
+            but is not a polished SPA. Consider htmx or a proper JSON
+            API + client-side rendering if the UI grows.
+      - [ ] Upstream's web UI supports checkbox toggles for each mode
+            and a dropdown for catalog; parity is close but not exact.
+      - [ ] No syntax highlighting in the SQL textarea (upstream uses
+            highlight.js in the page template).
 - [ ] `DEFINE MACRO` / macro expansion.
       Needs `MacroCatalog` register/lookup methods plus
       `ParserOptions.SetMacroCatalog`. The `MacroCatalog` type is
