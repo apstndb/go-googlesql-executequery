@@ -20,3 +20,20 @@ func TestPageTemplateUsesUrlEncodedFetchBody(t *testing.T) {
 		t.Fatal("do not pass FormData directly to fetch(); it forces multipart/form-data")
 	}
 }
+
+func TestPageTemplateCommentsOutUnsupportedUpstreamControls(t *testing.T) {
+	t.Parallel()
+	if !strings.Contains(pageTemplate, "<!--") {
+		t.Fatal("expected HTML comments documenting unsupported upstream controls")
+	}
+	for _, needle := range []string{
+		`value="execute"`,
+		`value="explain"`,
+		`value="unanalyze"`,
+		`value="pipe"`,
+	} {
+		if !strings.Contains(pageTemplate, needle) {
+			t.Fatalf("expected commented reference to %q for upstream parity", needle)
+		}
+	}
+}

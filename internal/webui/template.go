@@ -32,14 +32,12 @@ type selectOpt struct {
 
 func defaultIndexData() indexData {
 	return indexData{
+		// parse / unparse / analyze only (see HTML comment in pageTemplate for upstream-only modes).
 		ToolModes: []toolModeRow{
-			{Value: "execute", Label: "execute", Checked: false},
-			{Value: "analyze", Label: "analyze", Checked: true},
 			{Value: "parse", Label: "parse", Checked: true},
-			{Value: "explain", Label: "explain", Checked: false},
-			{Value: "unanalyze", Label: "unanalyze", Checked: false},
 			{Value: "unparse", Label: "unparse", Checked: false},
-		}, // order matches google/googlesql page_body.html
+			{Value: "analyze", Label: "analyze", Checked: true},
+		},
 		Catalogs: []selectOpt{
 			{Value: "none", Label: "none"},
 			{Value: "sample", Label: "sample", Selected: true},
@@ -51,9 +49,9 @@ func defaultIndexData() indexData {
 			{Value: "expression", Label: "Expression", Checked: false},
 			{Value: "script", Label: "Script", Checked: false},
 		},
+		// standard only; pipe is documented in an HTML comment (unsupported target_syntax).
 		TargetSyntaxModes: []radioRow{
 			{Value: "standard", Label: "Standard", Checked: true},
-			{Value: "pipe", Label: "Pipe", Checked: false},
 		},
 		LanguageFeatures: []selectOpt{
 			{Value: "NONE", Label: "NONE"},
@@ -220,6 +218,13 @@ hr {
         <label><input type="checkbox" name="mode" value="{{.Value}}"{{if .Checked}} checked{{end}}> {{.Label}}</label>
         {{- end}}
       </div>
+      <!--
+      Unsupported tool modes in this Go port (ErrUnsupportedMode). Left here to mirror upstream
+      page_body.html; uncomment when go-googlesql exposes evaluator / SQLBuilder (see ReasonMode*).
+        <label><input type="checkbox" name="mode" value="execute"> execute</label>
+        <label><input type="checkbox" name="mode" value="explain"> explain</label>
+        <label><input type="checkbox" name="mode" value="unanalyze"> unanalyze</label>
+      -->
     </fieldset>
   </div>
   <div class="form-group">
@@ -250,6 +255,10 @@ hr {
           <label><input type="radio" name="target_syntax_mode" value="{{.Value}}"{{if .Checked}} checked{{end}}> {{.Label}}</label>
           {{- end}}
         </div>
+        <!--
+        Pipe syntax is unsupported (ErrUnsupportedFlag target_syntax). Uncomment when Resolved→SQL pipe syntax is wired.
+          <label><input type="radio" name="target_syntax_mode" value="pipe"> Pipe</label>
+        -->
       </fieldset>
     </div>
     <div class="form-group">
