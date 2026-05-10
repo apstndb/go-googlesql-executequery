@@ -25,8 +25,15 @@ import (
 //
 // Instead, we walk the tree manually with NumChildren / Child and
 // indent per depth, which produces semantically equivalent output
-// without trying to byte-match upstream's exact format. Unblocked
-// when go-googlesql exports `ASTNode.DebugString`.
+// without trying to byte-match upstream's exact format.
+//
+// Proto-binding note: if go-googlesql exposed ASTNode.Serialize(proto),
+// we could convert the AST to an idiomatic protoc-gen-go struct and
+// emit JSON/textproto via protojson.Marshal or prototext.Marshal,
+// eliminating the need for a native DebugString binding entirely.
+// See doc.go, "Proto binding architecture" for the general pattern.
+// Unblocked when go-googlesql exports `ASTNode.DebugString` or
+// `ASTNode.Serialize`.
 func parseTreeDebugString(root googlesql.ASTNode) (string, error) {
 	var b strings.Builder
 	if err := walkPrintAST(&b, root, 0); err != nil {
