@@ -6,7 +6,10 @@ import "strings"
 type Mode string
 
 const (
-	// ModeParse — parse the input and emit upstream's DebugString.
+	// ModeParse — parse the input and emit a parse-tree dump matching the C++
+	// execute_query tool as closely as go-googlesql allows. Recursive AST
+	// DebugString is not exported from go-googlesql (see AGENTS.md); output is
+	// built manually in parseTreeDebugString using SingleNodeDebugString + tree walk.
 	ModeParse Mode = "parse"
 
 	// ModeUnparse — parse the input and emit canonical SQL via

@@ -7,17 +7,17 @@ import (
 	googlesql "github.com/goccy/go-googlesql"
 )
 
-// parseTreeDebugString walks an AST rooted at root and emits a
-// hierarchical pretty-print using each node's SingleNodeDebugString,
-// with a byte span suffix ` [start-end]` per node matching upstream
-// `execute_query --mode=parse` (GoogleSQL C++ reference tool).
+// parseTreeDebugString walks an AST rooted at root and emits a hierarchical
+// parse-tree dump shaped like the C++ execute_query reference binary.
 //
-// Workaround [go-googlesql v0.2.1]: the recursive multi-line
-// debug formatter upstream uses is not exposed; only the per-node
-// single-line formatter is. We walk NumChildren / Child and append
-// [`start`-`end`) from [ASTNode.Location] when valid.
+// Same constraint family as AGENTS.md "Modes": go-googlesql does not export
+// the recursive AST DebugString that upstream uses for --mode=parse output—only
+// SingleNodeDebugString (per-node, single-line). Unblocked when go-googlesql
+// exposes a recursive ASTNode.DebugString (or equivalent).
 //
-// Unblocked when go-googlesql exports a recursive `ASTNode.DebugString`.
+// Until then we walk NumChildren / Child ourselves and append byte spans from
+// Location() (withParseLocationSuffix), because SingleNodeDebugString alone does
+// not include source ranges and does not recurse.
 func parseTreeDebugString(root googlesql.ASTNode) (string, error) {
 	var b strings.Builder
 	if err := walkPrintAST(&b, root, 0); err != nil {
@@ -59,8 +59,9 @@ func walkPrintAST(b *strings.Builder, n googlesql.ASTNode, depth int) error {
 	return nil
 }
 
-// withParseLocationSuffix appends ` [start-end]` using each node's parse
-// location when present, matching upstream execute_query parse-tree lines.
+// withParseLocationSuffix appends ` [start-end]` from ASTNode.Location when
+// valid. This is local formatting work: go-googlesql does not combine spans into
+// the recursive DebugString line format—that API is not exported (see above).
 func withParseLocationSuffix(n googlesql.ASTNode, line string) string {
 	if n == nil {
 		return line

@@ -43,9 +43,9 @@ type Writer interface {
 
 // NewTextWriter returns a Writer that emits plain-text CLI output to w.
 //
-// Parse and unparse modes stream output in the same layout as the upstream
-// C++ execute_query tool (parse tree with byte-offset spans, then a blank
-// line, then canonical SQL) rather than labeled `[parse]` / `[unparse]` sections.
+// Parse/unparse section layout (tree, blank line, SQL) is implemented here to
+// mirror the C++ tool; go-googlesql only provides Unparse and per-node debug
+// helpers—see parseTreeDebugString for the parse-tree workaround.
 //
 // Analyze and describe output remain labeled (`[analyze]`, `[describe]`) for readability.
 func NewTextWriter(w io.Writer) Writer { return &textWriter{w: w} }
