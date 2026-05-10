@@ -5,7 +5,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/apstndb/go-googlesql-executequery/internal/optionspb"
 	googlesql "github.com/goccy/go-googlesql"
+	"google.golang.org/protobuf/proto"
 )
 
 // RewriteSet is the parsed value of `--enabled_ast_rewrites`.
@@ -117,28 +119,10 @@ func (rs RewriteSet) Apply(ao *googlesql.AnalyzerOptions) error {
 			}
 		}
 	case RewriteBaseAll, RewriteBaseAllMinusDev:
-		// Workaround [go-googlesql v0.2.1]: the per-rewrite
-		// `in_development` annotation is not exposed, so ALL and
-		// ALL_MINUS_DEV cannot be distinguished — both enable
-		// everything we know about.
-		//
-		// Upstream C++ API:
-		// googlesql::ResolvedASTRewriteOptions::in_development
-		// (third_party/googlesql/googlesql/public/options.proto:94)
-		// is the per-enum-value annotation read out of the
-		// `ResolvedASTRewrite_descriptor()`'s value options.
-		//
-		// Natural Go code:
-		//   for _, rw := range googlesql.AllResolvedASTRewrites() {
-		//       if base == RewriteBaseAllMinusDev && rw.InDevelopment() {
-		//           continue
-		//       }
-		//       ao.EnableRewrite(rw, true)
-		//   }
-		//
-		// Unblocked when go-googlesql exports an `InDevelopment()`
-		// (or equivalent annotation accessor) on `ResolvedASTRewrite`.
 		for _, rw := range allResolvedASTRewrites {
+			if rs.Base == RewriteBaseAllMinusDev && isRewriteInDevelopment(rw) {
+				continue
+			}
 			if err := ao.EnableRewrite(rw, true); err != nil {
 				return fmt.Errorf("enable %s: %w", rw, err)
 			}
@@ -191,29 +175,9 @@ var (
 )
 
 // rewriteMap caches the user-facing-name → ResolvedASTRewrite
-// lookup used by ParseRewriteSet.
-//
-// Workaround [go-googlesql v0.2.1]: the protobuf-generated name
-// accessor for the ResolvedASTRewrite enum is not exposed, so we
-// strip the Go enum's `ResolvedASTRewriteRewrite` prefix manually.
-//
-// Upstream C++ API: protobuf-generated
-// `googlesql::ResolvedASTRewrite_Name(ResolvedASTRewrite)` from the
-// `enum ResolvedASTRewrite` in `googlesql/public/options.proto`. The
-// CLI strips the `REWRITE_` prefix per
-// `--enabled_ast_rewrites`'s upstream help string.
-//
-// Natural Go code:
-//
-//	for _, rw := range googlesql.AllResolvedASTRewrites() {
-//	    name := strings.TrimPrefix(googlesql.ResolvedASTRewrite_Name(rw), "REWRITE_")
-//	    if name == requested { return rw, nil }
-//	}
-//
-// Instead, derive the user-facing name from the Go String() spelling
-// and feed it through normalizeFeatureName for case/underscore
-// folding. Unblocked when go-googlesql exposes
-// `ResolvedASTRewrite_Name` / `_Parse`.
+// lookup used by ParseRewriteSet. Uses go-googlesql's enum values
+// (from zz_enums.go) because the wasm binding assigns different
+// numeric values than the committed proto.
 func rewriteMap() map[string]googlesql.ResolvedASTRewrite {
 	rewriteMapOnce.Do(func() {
 		rewriteMapVal = make(map[string]googlesql.ResolvedASTRewrite, len(allResolvedASTRewrites))
@@ -224,4 +188,49 @@ func rewriteMap() map[string]googlesql.ResolvedASTRewrite {
 		}
 	})
 	return rewriteMapVal
+}
+
+// isRewriteInDevelopment checks the `in_development` proto annotation
+// for a given go-googlesql ResolvedASTRewrite value.
+//
+// Because the wasm binding assigns different numeric enum values than
+// the committed proto (systematic +1 offset observed in go-googlesql
+// v0.2.1), we match by **name**, not by numeric value.
+func isRewriteInDevelopment(rw googlesql.ResolvedASTRewrite) bool {
+	m := rewriteAnnotations()
+	// go-googlesql's String() returns e.g. "ResolvedASTRewriteRewriteFlatten";
+	// strip "ResolvedASTRewrite" prefix, then "Rewrite" prefix, and normalize.
+	key := strings.TrimPrefix(rw.String(), "ResolvedASTRewrite")
+	key = strings.TrimPrefix(key, "Rewrite")
+	key = normalizeFeatureName(key)
+	if ann, ok := m[key]; ok {
+		return ann.GetInDevelopment()
+	}
+	return false
+}
+
+var (
+	rewriteAnnotationsOnce sync.Once
+	rewriteAnnotationsMap  map[string]*optionspb.ResolvedASTRewriteOptions
+)
+
+// rewriteAnnotations returns a normalized-name → ResolvedASTRewriteOptions
+// map built from the proto enum value options.
+func rewriteAnnotations() map[string]*optionspb.ResolvedASTRewriteOptions {
+	rewriteAnnotationsOnce.Do(func() {
+		ed := optionspb.File_googlesql_public_options_proto.Enums().ByName("ResolvedASTRewrite")
+		rewriteAnnotationsMap = make(map[string]*optionspb.ResolvedASTRewriteOptions, ed.Values().Len())
+		for i := 0; i < ed.Values().Len(); i++ {
+			vd := ed.Values().Get(i)
+			opts := vd.Options()
+			if !proto.HasExtension(opts, optionspb.E_RewriteOptions) {
+				continue
+			}
+			ext := proto.GetExtension(opts, optionspb.E_RewriteOptions).(*optionspb.ResolvedASTRewriteOptions)
+			// Register under normalized proto name (strip "REWRITE_" prefix).
+			name := strings.TrimPrefix(string(vd.Name()), "REWRITE_")
+			rewriteAnnotationsMap[normalizeFeatureName(name)] = ext
+		}
+	})
+	return rewriteAnnotationsMap
 }

@@ -56,8 +56,13 @@ spell out the precise upstream change that unblocks each one.
 - [ ] `--import_path` (IMPORT MODULE).
       Needs `ModuleFactory` exposed by go-googlesql.
 - [ ] `--web` and `--port`.
-      Naturally follows execute mode; ship after the evaluator is
-      available.
+      Serve a local HTTP UI for interactive query editing. The upstream
+      HTML/CSS templates live in `third_party/googlesql/googlesql/tools/
+      execute_query/web/` and can be embedded with Go `embed`. What is
+      missing is an `HTMLWriter` implementation of the `Writer` interface
+      and a web request handler that bridges HTTP form params to the
+      `Run` entry point. Does **not** require execute mode; a
+      parse/unparse/analyze-only UI is already useful.
 - [ ] `DEFINE MACRO` / macro expansion.
       Needs `MacroCatalog` register/lookup methods plus
       `ParserOptions.SetMacroCatalog`. The `MacroCatalog` type is
@@ -126,3 +131,38 @@ spell out the precise upstream change that unblocks each one.
 - [x] Consider an `actions/cache@v4` step in CI for the wazero
       compilation cache directory, to amortise the ~3 s wasm
       compile across runs.
+
+## Protobuf Code Generation (protoc-gen-go)
+
+- [x] Update `third_party/googlesql` sparse-checkout to include `googlesql/public/options.proto` (and any required dependencies like `type.proto` or `testdata/*.proto`).
+- [x] Add `protoc` and `protoc-gen-go` to `mise.toml` as dependencies, and define a `mise run generate` task to compile the protos.
+- [x] Eliminate custom option workarounds (`ideally_enabled`, `in_development`) by reading proto extensions via `protoreflect` and name-based matching to compute `DEFAULTS_MINUS_DEV` and `ALL_MINUS_DEV` correctly.
+- [ ] Refactor `catalog/sample_proto.go` to use the generated `FileDescriptorProto` from compiled test protos instead of hand-building it.
+
+### Wasm enum value offset (discovery)
+
+go-googlesql v0.2.1 (via `goccy/googlesql-wasm` v0.1.5) assigns
+**different numeric values** to `LanguageFeature` and
+`ResolvedASTRewrite` enum members than the committed
+`googlesql/public/options.proto` — even though both derive from the
+same `google/googlesql` commit (`36dd14aa`).
+
+Observed pattern: a systematic +1 offset for enum values in
+`LanguageFeature` (starting around 14117+) and `ResolvedASTRewrite`
+(all values). This is likely an artefact of how wasmify's
+`gen-proto` / C++ header parsing generates the Go enum constants
+(e.g. skipping or renumbering the proto's 0-value sentinel).
+
+Consequence: **proto enum int values cannot be cast directly to
+`googlesql.LanguageFeature` / `googlesql.ResolvedASTRewrite`**.
+`zz_enums.go` (and `hack/gen-enums.sh`) remain necessary for
+enum iteration and name→value mapping. The proto is used only for
+annotation lookup (`in_development`, `ideally_enabled`,
+`default_enabled`) via **name-based matching**, which is
+version-skew tolerant.
+
+Confirmed: `wasmify`'s `internal/protogen/proto.go` (in `writeEnum`)
+explicitly adds a +1 offset to all enum values from the C++ spec
+and injects an `_UNSPECIFIED = 0` member to satisfy Protobuf
+requirements. This shift occurs regardless of whether the source
+C++ enum already has a 0-value.

@@ -16,6 +16,7 @@ import (
 
 	executequery "github.com/apstndb/go-googlesql-executequery"
 	"github.com/apstndb/go-googlesql-executequery/cache"
+	"github.com/apstndb/go-googlesql-executequery/internal/webui"
 )
 
 const usage = "Usage: execute_query [flags] {<sql> | -}\n" +
@@ -78,6 +79,18 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 		return err
 	}
 
+	if err := setupRuntime(rf); err != nil {
+		return err
+	}
+
+	if cfg.Web {
+		port := 8080
+		if cfg.Port != nil {
+			port = *cfg.Port
+		}
+		return runWebServer(port)
+	}
+
 	sql, err := readSQL(rf.sqlFile, fs.Args(), stdin)
 	if err != nil {
 		return fmt.Errorf("%w: %v", errIO, err)
@@ -86,10 +99,6 @@ func run(args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	if sql == "" {
 		fs.Usage()
 		return fmt.Errorf("%w: no SQL provided", errIO)
-	}
-
-	if err := setupRuntime(rf); err != nil {
-		return err
 	}
 
 	w := executequery.NewTextWriter(stdout)
@@ -119,6 +128,10 @@ func setupRuntime(rf *registeredFlags) error {
 		return fmt.Errorf("unknown --compilation_mode %q", rf.compilationMode)
 	}
 	return cache.Setup(opts...)
+}
+
+func runWebServer(port int) error {
+	return webui.NewServer(port).Run()
 }
 
 func isUnsupportedErr(err error) bool {

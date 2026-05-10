@@ -85,17 +85,6 @@ func TestCLIExecuteRejected(t *testing.T) {
 	}
 }
 
-func TestCLIWebRejected(t *testing.T) {
-	bin := buildBinary(t)
-	_, stderr, code := runBinary(t, bin, "--web", "SELECT 1")
-	if code != 2 {
-		t.Errorf("expected exit 2 for --web, got %d (stderr=%q)", code, stderr)
-	}
-	if !strings.Contains(stderr, "--web") {
-		t.Errorf("stderr should mention --web: %q", stderr)
-	}
-}
-
 func TestCLIStdinInput(t *testing.T) {
 	bin := buildBinary(t)
 	cmd := exec.Command(bin, "--mode=unparse", "-")

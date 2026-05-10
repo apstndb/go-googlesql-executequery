@@ -1,7 +1,9 @@
 [tools]
 # Track goccy/go-googlesql's go.mod requirement.
 go = "1.26"
+"go:google.golang.org/protobuf/cmd/protoc-gen-go" = "v1.36.5"
 golangci-lint = "2.12.2"
+protoc = "29.3"
 
 [tasks.fmt]
 description = "Format Go sources (golangci-lint fmt; gofumpt from .golangci.yml)"
@@ -27,6 +29,16 @@ run = "go test -tags=corpus ./cmd/execute_query/..."
 description = "Build the execute_query binary"
 run = "go build -o bin/execute_query ./cmd/execute_query"
 
+[tasks.generate]
+description = "Generate Go bindings for upstream protobufs"
+run = """
+protoc -I=third_party/googlesql \
+  --go_out=. \
+  --go_opt=module=github.com/apstndb/go-googlesql-executequery \
+  --go_opt=Mgooglesql/public/options.proto=github.com/apstndb/go-googlesql-executequery/internal/optionspb \
+  third_party/googlesql/googlesql/public/options.proto
+"""
+
 [tasks.ci]
 description = "Full CI pipeline (test, build, then lint — ordered to warm the module/build cache before golangci-lint)"
-run = "mise run test && mise run build && mise run lint"
+run = "mise run generate && mise run test && mise run build && mise run lint"

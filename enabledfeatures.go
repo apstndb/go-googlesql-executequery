@@ -5,7 +5,9 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/apstndb/go-googlesql-executequery/internal/optionspb"
 	googlesql "github.com/goccy/go-googlesql"
+	"google.golang.org/protobuf/proto"
 )
 
 // FeatureSet is the parsed value of `--enabled_language_features`.
@@ -46,37 +48,11 @@ const (
 	// Maps to LanguageOptions.EnableMaximumLanguageFeatures.
 	FeatureBaseAllMinusDev
 
-	// FeatureBaseDefaults uses NewLanguageOptions's defaults
-	// (no-op; the LanguageOptions starts in the defaults state).
-	//
-	// Workaround [go-googlesql v0.2.1]: upstream's DEFAULTS is
-	// computed from the `LanguageFeatureOptions.ideally_enabled`
-	// proto annotation (default true) on each enum value, which
-	// go-googlesql does not expose.
-	//
-	// Upstream C++ API:
-	//   - googlesql::LanguageOptions::GetLanguageFeaturesForVersion
-	//     (third_party/googlesql/googlesql/public/language_options.h:115)
-	//     returns the set of features for a given LanguageVersion.
-	//   - googlesql::LanguageFeatureOptions::ideally_enabled
-	//     (third_party/googlesql/googlesql/public/options.proto:89)
-	//     is the per-feature annotation read out of the
-	//     `LanguageFeature_descriptor()`'s value options.
-	//
-	// Natural Go code (one of):
-	//   set := googlesql.GetLanguageFeaturesForVersion(googlesql.LanguageVersionDefault)
-	//   for _, f := range set { lo.EnableLanguageFeature(f) }
-	//   // or, per-feature:
-	//   if f.IdeallyEnabled() { lo.EnableLanguageFeature(f) }
-	//
-	// Instead, we treat DEFAULTS as the NewLanguageOptions zero
-	// state. This matches in-practice but may diverge from upstream
-	// for fringe features. Unblocked when go-googlesql exports the
-	// version-keyed feature-set helper or the per-feature
-	// `ideally_enabled` accessor.
+	// FeatureBaseDefaults uses NewLanguageOptions's defaults.
 	FeatureBaseDefaults
 
-	// FeatureBaseDefaultsMinusDev — see FeatureBaseDefaults caveat.
+	// FeatureBaseDefaultsMinusDev uses NewLanguageOptions's defaults
+	// minus features that are in development.
 	FeatureBaseDefaultsMinusDev
 )
 
@@ -122,8 +98,16 @@ func ParseFeatureSet(s string) (FeatureSet, error) {
 // Apply mutates lo to reflect fs.
 func (fs FeatureSet) Apply(lo *googlesql.LanguageOptions) error {
 	switch fs.Base {
-	case FeatureBaseUnset, FeatureBaseDefaults, FeatureBaseDefaultsMinusDev:
+	case FeatureBaseUnset, FeatureBaseDefaults:
 		// no-op (start from NewLanguageOptions's defaults)
+	case FeatureBaseDefaultsMinusDev:
+		for _, f := range allLanguageFeatures {
+			if isLanguageFeatureInDevelopment(f) {
+				if err := lo.DisableLanguageFeature(f); err != nil {
+					return fmt.Errorf("disable dev feature %s: %w", f, err)
+				}
+			}
+		}
 	case FeatureBaseNone:
 		if err := lo.DisableAllLanguageFeatures(); err != nil {
 			return fmt.Errorf("disable all features: %w", err)
@@ -185,27 +169,6 @@ func lookupLanguageFeature(name string) (googlesql.LanguageFeature, error) {
 // name and upstream's `FEATURE_<SCREAMING_SNAKE>` flag spelling to
 // a common underscore-free upper-case key, so the same lookup map
 // matches whichever form the user types.
-//
-// Workaround [go-googlesql v0.2.1]: the protobuf-generated name
-// accessor for the LanguageFeature enum is not exposed, so we cannot
-// translate between the user-facing `FEATURE_RANGE_TYPE` form and
-// the Go enum value directly.
-//
-// Upstream C++ API: protobuf-generated `googlesql::LanguageFeature_Name(
-// LanguageFeature)` returning the enum-value name from
-// `googlesql/public/options.proto`'s `enum LanguageFeature` (line 119).
-// (Companion `LanguageFeature_Parse(string, LanguageFeature*)` lets
-// callers go in the other direction.)
-//
-// Natural Go code:
-//
-//	for _, f := range googlesql.AllLanguageFeatures() {
-//	    if googlesql.LanguageFeature_Name(f) == name { return f, nil }
-//	}
-//
-// Instead, normalise both sides to the same underscore-free upper-
-// case key and look up. Unblocked when go-googlesql exposes the
-// protobuf-generated `LanguageFeature_Name` / `_Parse` helpers.
 func normalizeFeatureName(s string) string {
 	var b strings.Builder
 	b.Grow(len(s))
@@ -235,4 +198,51 @@ func languageFeatureMap() map[string]googlesql.LanguageFeature {
 		}
 	})
 	return langFeatureMap
+}
+
+// isLanguageFeatureInDevelopment checks the `in_development` proto
+// annotation for a given go-googlesql LanguageFeature value.
+//
+// Because the submodule proto and go-googlesql may be built from
+// different commits of options.proto (enum numbers can shift between
+// versions), we match by **name**, not by numeric value.
+//
+// Implementation note: the lookup builds a cached name→annotation
+// map from the proto on first call, then matches against the
+// go-googlesql enum's String() representation.
+func isLanguageFeatureInDevelopment(f googlesql.LanguageFeature) bool {
+	m := langFeatureAnnotations()
+	// go-googlesql's String() returns e.g. "LanguageFeatureFeatureRowType";
+	// strip the "LanguageFeature" prefix and normalize to match proto names.
+	key := normalizeFeatureName(strings.TrimPrefix(f.String(), "LanguageFeature"))
+	if ann, ok := m[key]; ok {
+		return ann.GetInDevelopment()
+	}
+	return false
+}
+
+var (
+	langFeatureAnnotationsOnce sync.Once
+	langFeatureAnnotationsMap  map[string]*optionspb.LanguageFeatureOptions
+)
+
+// langFeatureAnnotations returns a normalized-name → LanguageFeatureOptions
+// map built from the proto enum value options.
+func langFeatureAnnotations() map[string]*optionspb.LanguageFeatureOptions {
+	langFeatureAnnotationsOnce.Do(func() {
+		ed := optionspb.File_googlesql_public_options_proto.Enums().ByName("LanguageFeature")
+		langFeatureAnnotationsMap = make(map[string]*optionspb.LanguageFeatureOptions, ed.Values().Len())
+		for i := 0; i < ed.Values().Len(); i++ {
+			vd := ed.Values().Get(i)
+			opts := vd.Options()
+			if !proto.HasExtension(opts, optionspb.E_LanguageFeatureOptions) {
+				continue
+			}
+			ext := proto.GetExtension(opts, optionspb.E_LanguageFeatureOptions).(*optionspb.LanguageFeatureOptions)
+			// Register under normalized proto name for matching against
+			// go-googlesql's Go-style enum name (both normalize the same).
+			langFeatureAnnotationsMap[normalizeFeatureName(string(vd.Name()))] = ext
+		}
+	})
+	return langFeatureAnnotationsMap
 }

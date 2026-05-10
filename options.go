@@ -97,12 +97,6 @@ func (c *Config) Validate() error {
 	if len(c.ImportPaths) != 0 {
 		return FlagUnsupportedError("import_path", ReasonFlagImportPath)
 	}
-	if c.Web {
-		return FlagUnsupportedError("web", ReasonFlagWeb)
-	}
-	if c.Port != nil {
-		return FlagUnsupportedError("port", ReasonFlagPort)
-	}
 	return nil
 }
 

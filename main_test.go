@@ -101,8 +101,8 @@ func TestRunUnsupportedMode(t *testing.T) {
 func TestRunUnsupportedFlag(t *testing.T) {
 	t.Parallel()
 	cfg := executequery.Config{
-		Modes: []executequery.Mode{executequery.ModeAnalyze},
-		Web:   true,
+		Modes:      []executequery.Mode{executequery.ModeAnalyze},
+		OutputMode: "json",
 	}
 	w := &captureWriter{}
 	err := executequery.Run(context.Background(), "SELECT 1", cfg, w)
