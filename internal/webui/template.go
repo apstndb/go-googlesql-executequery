@@ -117,8 +117,8 @@ const pageTemplate = `<!DOCTYPE html>
           <fieldset>
             <legend>Mode</legend>
             {{- range .ToolModes}}
-            <span class="mode-option">
-              <input type="checkbox" name="mode" value="{{.Value}}" id="{{.ID}}"{{if .Checked}} checked{{end}}{{if .Hidden}} hidden{{end}}>
+            <span class="mode-option"{{if .Hidden}} hidden{{end}}>
+              <input type="checkbox" name="mode" value="{{.Value}}" id="{{.ID}}"{{if .Checked}} checked{{end}}>
               <label for="{{.ID}}">{{.Label}}</label>
             </span>
             {{- end}}

@@ -53,10 +53,15 @@ func TestPageTemplateUpstreamOnlyModesUseHiddenUncheckedControls(t *testing.T) {
 		t.Fatal(err)
 	}
 	html := buf.String()
+	if strings.Count(html, `<span class="mode-option" hidden>`) != 3 {
+		t.Fatalf("expected 3 hidden mode-option wrappers (execute/explain/unanalyze), got %d", strings.Count(html, `<span class="mode-option" hidden>`))
+	}
 	for _, val := range []string{"execute", "explain", "unanalyze"} {
-		needle := `<input type="checkbox" name="mode" value="` + val + `" id="mode-` + val + `" hidden`
-		if !strings.Contains(html, needle) {
-			t.Fatalf("expected hidden checkbox name=mode value=%s", val)
+		if strings.Contains(html, `name="mode" value="`+val+`" id="mode-`+val+`" hidden`) {
+			t.Fatalf("checkbox input for %s must not use hidden; wrapper span hides the row", val)
+		}
+		if !strings.Contains(html, `name="mode" value="`+val+`"`) {
+			t.Fatalf("expected mode checkbox value=%s", val)
 		}
 	}
 	if strings.Contains(html, `type="hidden" name="mode"`) {
