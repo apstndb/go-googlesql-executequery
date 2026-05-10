@@ -2,6 +2,7 @@ package executequery
 
 import (
 	"fmt"
+	"strings"
 
 	googlesql "github.com/goccy/go-googlesql"
 )
@@ -71,8 +72,13 @@ func (c *Config) Validate() error {
 	if c.UseBoxGlyphs != nil {
 		return FlagUnsupportedError("use_box_glyphs", ReasonFlagUseBoxGlyphs)
 	}
-	if c.OutputMode != "" && c.OutputMode != "box" {
-		return FlagUnsupportedError("output_mode", ReasonFlagOutputMode)
+	if c.OutputMode != "" {
+		switch strings.ToLower(strings.TrimSpace(c.OutputMode)) {
+		case "box", "json":
+			break
+		default:
+			return FlagUnsupportedError("output_mode", ReasonFlagOutputModeFormat)
+		}
 	}
 	if len(c.TableSpecs) != 0 {
 		return FlagUnsupportedError("table_spec", ReasonFlagTableSpec)

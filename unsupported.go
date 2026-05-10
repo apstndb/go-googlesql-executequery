@@ -78,30 +78,27 @@ const ReasonFlagTargetSyntax = "" +
 const ReasonFlagUseBoxGlyphs = "" +
 	"--use_box_glyphs only affects the execute-mode result table, which is not supported"
 
-// ReasonFlagOutputMode: upstream's `--output_mode` controls
-// execute-mode result rendering (box / json / textproto).
+// ReasonFlagOutputModeFormat: non-default --output_mode values other than
+// `box` and `json` (notably `textproto`) or other unknown spellings.
 //
-// Why unsupported: the parse / analyze modes use upstream's own
-// DebugString text format. Emitting AST or Resolved nodes as
-// textproto / json would require Serialize(*Proto) on the AST and
-// Resolved node types, which go-googlesql does not expose.
+// Why unsupported: textproto would require serializing result values to
+// protocol buffer text; the Go port does not implement that path yet.
+// JSON for arbitrary analyze/parse output likewise requires AST/Resolved
+// Serialize, which go-googlesql does not expose (see also
+// ReasonFlagOutputModeJSONNonDescribe).
+const ReasonFlagOutputModeFormat = "" +
+	"this Go port only implements --output_mode=box|json (and default); textproto is not implemented"
+
+// ReasonFlagOutputModeJSONNonDescribe: --output_mode=json with statements
+// other than catalog-backed DESCRIBE (which emits JSON wrapping plain text).
 //
-// Note on the proto path: the C++ side inside the wasm module was
-// built with protoc-gen-cpp, so every *Proto type there already
-// implements google::protobuf::Message and can exchange wire-format
-// bytes with a protoc-gen-go struct of the same definition.  If
-// go-googlesql exposed Serialize() on AST / Resolved handles, the
-// resulting *Proto wire bytes could be fed straight into
-// google.golang.org/protobuf/protojson.Marshal or
-// prototext.Marshal to produce JSON / textproto output with no
-// hand-written visitor.  The only missing link is the Handle ->
-// Proto conversion method on the wasm side.
+// Why unsupported: upstream JSON for analyze/parse results serializes AST /
+// Resolved protos; go-googlesql does not expose Serialize on those handles.
 //
-// Unblocked when: go-googlesql exposes Serialize on AST and
-// Resolved node types (or the project commits to an in-process
-// visitor implementation, which is significant work).
-const ReasonFlagOutputMode = "" +
-	"--output_mode is execute-only; AST/Resolved Serialize is not exposed by go-googlesql"
+// Unblocked when: go-googlesql exposes Serialize on AST and Resolved nodes,
+// or equivalent JSON emission APIs.
+const ReasonFlagOutputModeJSONNonDescribe = "" +
+	"--output_mode=json is implemented only for DESCRIBE catalog lookup here; JSON for analyze/parse requires AST/Resolved Serialize, which go-googlesql does not expose"
 
 // ReasonFlagTableSpec: upstream's `--table_spec` registers tables
 // from CSV / binproto / textproto files for execute mode to query.

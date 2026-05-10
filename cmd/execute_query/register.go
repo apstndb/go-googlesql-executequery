@@ -102,9 +102,8 @@ func registerFlags(fs *flag.FlagSet) *registeredFlags {
 
 	fs.StringVar(&rf.importPath, "import_path", "", unsupportedHelp(helpImportPath, executequery.ReasonFlagImportPath))
 	fs.StringVar(&rf.tableSpec, "table_spec", "", unsupportedHelp(helpTableSpec, executequery.ReasonFlagTableSpec))
-	// descriptor_pool / target_syntax / output_mode default to ""
-	// (unset). Validation accepts "" and "none"/standard"/"box" silently
-	// and rejects any other explicit value with ErrUnsupportedFlag.
+	// descriptor_pool / target_syntax default to "" (unset).
+	// output_mode defaults to ""; Validate accepts empty, box, json.
 	fs.StringVar(&rf.descriptorPool, "descriptor_pool", "", unsupportedHelp(helpDescriptorPool, executequery.ReasonFlagDescriptorPool))
 	fs.StringVar(&rf.targetSyntax, "target_syntax", "", unsupportedHelp(helpTargetSyntax, executequery.ReasonFlagTargetSyntax))
 	fs.Func("use_box_glyphs", unsupportedHelp(helpUseBoxGlyphs, executequery.ReasonFlagUseBoxGlyphs), func(v string) error {
@@ -119,7 +118,7 @@ func registerFlags(fs *flag.FlagSet) *registeredFlags {
 		}
 		return nil
 	})
-	fs.StringVar(&rf.outputMode, "output_mode", "", unsupportedHelp(helpOutputMode, executequery.ReasonFlagOutputMode))
+	fs.StringVar(&rf.outputMode, "output_mode", "", helpOutputMode)
 
 	fs.Func("evaluator_max_value_byte_size", unsupportedHelp(helpEvaluatorMaxValueByteSize, executequery.ReasonFlagEvaluatorMaxValue), func(v string) error {
 		rf.evaluatorMaxValueByteSizeExplicit = true

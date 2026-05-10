@@ -102,7 +102,7 @@ func TestRunUnsupportedFlag(t *testing.T) {
 	t.Parallel()
 	cfg := executequery.Config{
 		Modes:      []executequery.Mode{executequery.ModeAnalyze},
-		OutputMode: "json",
+		OutputMode: "textproto",
 	}
 	w := &captureWriter{}
 	err := executequery.Run(context.Background(), "SELECT 1", cfg, w)
@@ -144,6 +144,39 @@ func TestRunDescribe(t *testing.T) {
 	}
 	if !strings.Contains(w.desc[0], "O_ORDERKEY") || !strings.Contains(w.desc[0], "┌") {
 		t.Errorf("describe output missing boxed TPCH schema: %s", w.desc[0])
+	}
+}
+
+func TestRunDescribeJSONMode(t *testing.T) {
+	t.Parallel()
+	cfg := executequery.Config{
+		Modes:       []executequery.Mode{executequery.ModeAnalyze},
+		CatalogName: "tpch",
+		OutputMode:  "json",
+	}
+	w := &captureWriter{}
+	if err := executequery.Run(context.Background(), "DESCRIBE Orders", cfg, w); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if len(w.desc) != 1 {
+		t.Fatalf("expected one DESCRIBE emit, got %d", len(w.desc))
+	}
+	out := w.desc[0]
+	if strings.Contains(out, "┌") || !strings.Contains(out, `"row"`) || !strings.Contains(out, `"Describe"`) || !strings.Contains(out, "Table: Orders") {
+		t.Fatalf("unexpected JSON describe output: %s", out)
+	}
+}
+
+func TestRunOutputModeJSONRequiresDescribe(t *testing.T) {
+	t.Parallel()
+	cfg := executequery.Config{
+		Modes:      []executequery.Mode{executequery.ModeAnalyze},
+		OutputMode: "json",
+	}
+	w := &captureWriter{}
+	err := executequery.Run(context.Background(), "SELECT 1", cfg, w)
+	if !errors.Is(err, executequery.ErrUnsupportedFlag) {
+		t.Fatalf("expected ErrUnsupportedFlag, got %v", err)
 	}
 }
 

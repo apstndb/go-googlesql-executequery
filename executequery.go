@@ -3,6 +3,7 @@ package executequery
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	googlesql "github.com/goccy/go-googlesql"
 
@@ -162,8 +163,11 @@ func (s *runState) processOneStatement(loc *googlesql.ParseResumeLocation) error
 		return fmt.Errorf("get statement: %w", err)
 	}
 
-	if handled, err := describeIfApplicable(stmt, s.cat.Schema, s.w); handled {
+	if handled, err := describeIfApplicable(stmt, s.cat.Schema, s.w, &s.cfg); handled {
 		return err
+	}
+	if strings.ToLower(strings.TrimSpace(s.cfg.OutputMode)) == "json" {
+		return FlagUnsupportedError("output_mode", ReasonFlagOutputModeJSONNonDescribe)
 	}
 
 	for _, mode := range s.cfg.effectiveModes() {
