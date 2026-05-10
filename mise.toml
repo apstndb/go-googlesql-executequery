@@ -25,6 +25,10 @@ run = "go test ./..."
 description = "Run corpus golden tests against third_party/googlesql/googlesql/examples"
 run = "go test -tags=corpus ./cmd/execute_query/..."
 
+[tasks."test:integration"]
+description = "Chromedp headless tests for --web UI (requires Chrome/Chromium on PATH)"
+run = "go test -tags=integration -count=1 -timeout=15m ./internal/webui/..."
+
 [tasks.build]
 description = "Build the execute_query binary"
 run = "go build -o bin/execute_query ./cmd/execute_query"

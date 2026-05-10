@@ -62,9 +62,9 @@ spell out the precise upstream change that unblocks each one.
       styled HTML via `internal/webui.HTMLWriter`.
       
       Known gaps / follow-up:
-      - [ ] Add headless-browser integration tests (e.g. chromedp or
-            playwright-go) that exercise the form submission and assert
-            on the rendered result HTML. Currently only tested manually.
+      - [x] Headless-browser integration tests (`mise run test:integration`,
+            chromedp): POST `/run` as `application/x-www-form-urlencoded`
+            (matching default HTML form encoding), assert Parse/Analyze HTML.
       - [ ] The `handleRun` endpoint returns raw HTML fragments; the
             JavaScript `fetch` replaces `result.innerHTML`. This works
             but is not a polished SPA. Consider htmx or a proper JSON

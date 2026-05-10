@@ -148,9 +148,18 @@ document.getElementById('queryForm').addEventListener('submit', async function(e
   const result = document.getElementById('result');
   result.innerHTML = '<p>Running...</p>';
   try {
+    // Match native HTML form POST (google/googlesql page_body.html uses method="post"):
+    // application/x-www-form-urlencoded. fetch()+FormData defaults to multipart/form-data,
+    // which is unnecessary here and has been unreliable for textarea values with some clients.
+    const fd = new FormData(form);
+    const params = new URLSearchParams();
+    for (const pair of fd.entries()) {
+      params.append(pair[0], pair[1]);
+    }
     const response = await fetch('/run', {
       method: 'POST',
-      body: new FormData(form)
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+      body: params.toString(),
     });
     const html = await response.text();
     result.innerHTML = html;

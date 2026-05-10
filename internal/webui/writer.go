@@ -9,7 +9,7 @@ import (
 // htmlWriter implements executequery.Writer and builds an HTML
 // fragment suitable for inserting into the web UI result pane.
 type htmlWriter struct {
-	buf   bytes.Buffer
+	buf    bytes.Buffer
 	errMsg string
 }
 
@@ -64,7 +64,7 @@ func (h *htmlWriter) FlushStatement(atEnd bool, errMsg string) error {
 }
 
 func (h *htmlWriter) writeSection(title, body string) error {
-	h.buf.WriteString(fmt.Sprintf(`<div class="result-section"><h3>%s</h3><pre>`, html.EscapeString(title)))
+	fmt.Fprintf(&h.buf, `<div class="result-section"><h3>%s</h3><pre>`, html.EscapeString(title))
 	h.buf.WriteString(html.EscapeString(body))
 	h.buf.WriteString("</pre></div>\n")
 	return nil

@@ -4,6 +4,7 @@ package webui
 import (
 	"fmt"
 	"html/template"
+	"mime"
 	"net/http"
 	"strings"
 
@@ -22,15 +23,19 @@ func NewServer(port int) *Server {
 	return &Server{port: port}
 }
 
-// Run starts the HTTP server and blocks until it shuts down.
-func (s *Server) Run() error {
+// Handler returns the HTTP handler used by Run (for tests and embedding).
+func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/", s.handleIndex)
 	mux.HandleFunc("/run", s.handleRun)
+	return mux
+}
 
+// Run starts the HTTP server and blocks until it shuts down.
+func (s *Server) Run() error {
 	addr := fmt.Sprintf(":%d", s.port)
 	fmt.Printf("Listening on http://localhost%s\n", addr)
-	return http.ListenAndServe(addr, mux)
+	return http.ListenAndServe(addr, s.Handler())
 }
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -53,9 +58,24 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err := r.ParseForm(); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	ct, _, perr := mime.ParseMediaType(r.Header.Get("Content-Type"))
+	if perr != nil && r.Header.Get("Content-Type") != "" {
+		http.Error(w, perr.Error(), http.StatusBadRequest)
 		return
+	}
+	switch ct {
+	case "multipart/form-data":
+		// ParseForm alone does not populate fields for multipart bodies (see net/http.Request.ParseForm).
+		if err := r.ParseMultipartForm(32 << 20); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	default:
+		// Includes application/x-www-form-urlencoded and empty (treated per ParseForm).
+		if err := r.ParseForm(); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
 	}
 
 	cfg := executequery.Config{
@@ -73,6 +93,10 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sql := strings.TrimSpace(r.FormValue("sql"))
+	if sql == "" {
+		// Upstream execute_query web UI names the textarea "query" (page_body.html).
+		sql = strings.TrimSpace(r.FormValue("query"))
+	}
 	if sql == "" {
 		http.Error(w, "no SQL provided", http.StatusBadRequest)
 		return

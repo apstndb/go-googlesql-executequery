@@ -21,6 +21,7 @@ mise install                    # installs Go and golangci-lint at pinned versio
 git submodule update --init     # populates third_party/googlesql
 mise run ci                     # lint + test + build
 mise run test:corpus            # corpus golden tests (separate from ci)
+mise run test:integration       # headless browser tests for --web (chromedp)
 ```
 
 Do not introduce a `Makefile`, `Taskfile.yml`, or shell scripts that

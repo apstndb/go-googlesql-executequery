@@ -39,6 +39,6 @@ Releases are validated by the GitHub Actions workflow `.github/workflows/ci.yml`
 - If a run failed from infra flake (runner disconnect, transient registry
   outage), use **Re-run failed jobs** on that workflow run. If only one matrix
   leg failed, **Re-run failed jobs** retries just the failed OS.
-- Required checks: `mise run ci` (lint, unit tests, build) and `mise run
-  test:corpus` must pass on each matrix OS before you publish the release or
-  treat the tag as good.
+- Required checks: `mise run ci` (lint, unit tests, build), `mise run
+  test:corpus`, and `mise run test:integration` must pass on each matrix OS
+  before you publish the release or treat the tag as good.

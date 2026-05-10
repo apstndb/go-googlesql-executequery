@@ -28,5 +28,9 @@ jobs:
           key: wazero-${{ runner.os }}-${{ hashFiles('go.sum') }}
           restore-keys: |
             wazero-${{ runner.os }}-
+      - uses: browser-actions/setup-chrome@v1
+        with:
+          chrome-version: stable
       - run: mise run ci
       - run: mise run test:corpus
+      - run: mise run test:integration
