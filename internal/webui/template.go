@@ -218,13 +218,10 @@ hr {
         <label><input type="checkbox" name="mode" value="{{.Value}}"{{if .Checked}} checked{{end}}> {{.Label}}</label>
         {{- end}}
       </div>
-      <!--
-      Unsupported tool modes in this Go port (ErrUnsupportedMode). Left here to mirror upstream
-      page_body.html; uncomment when go-googlesql exposes evaluator / SQLBuilder (see ReasonMode*).
-        <label><input type="checkbox" name="mode" value="execute"> execute</label>
-        <label><input type="checkbox" name="mode" value="explain"> explain</label>
-        <label><input type="checkbox" name="mode" value="unanalyze"> unanalyze</label>
-      -->
+      {{/* Hidden placeholders mirror upstream page_body.html modes; no name="" so they are not submitted. */}}
+      <input type="hidden" value="execute" title="Upstream mode execute — ErrUnsupportedMode (ReasonModeExecute). Omits name so POST is unchanged.">
+      <input type="hidden" value="explain" title="Upstream mode explain — ErrUnsupportedMode (ReasonModeExplain). Omits name so POST is unchanged.">
+      <input type="hidden" value="unanalyze" title="Upstream mode unanalyze — ErrUnsupportedMode (ReasonModeUnanalyze). Omits name so POST is unchanged.">
     </fieldset>
   </div>
   <div class="form-group">
@@ -255,10 +252,8 @@ hr {
           <label><input type="radio" name="target_syntax_mode" value="{{.Value}}"{{if .Checked}} checked{{end}}> {{.Label}}</label>
           {{- end}}
         </div>
-        <!--
-        Pipe syntax is unsupported (ErrUnsupportedFlag target_syntax). Uncomment when Resolved→SQL pipe syntax is wired.
-          <label><input type="radio" name="target_syntax_mode" value="pipe"> Pipe</label>
-        -->
+        {{/* Pipe syntax option — no name so not submitted; enable when target_syntax pipe is supported. */}}
+        <input type="hidden" value="pipe" title="Upstream target_syntax pipe — ErrUnsupportedFlag (ReasonFlagTargetSyntax). Omits name so POST is unchanged.">
       </fieldset>
     </div>
     <div class="form-group">

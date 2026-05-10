@@ -21,19 +21,24 @@ func TestPageTemplateUsesUrlEncodedFetchBody(t *testing.T) {
 	}
 }
 
-func TestPageTemplateCommentsOutUnsupportedUpstreamControls(t *testing.T) {
+func TestPageTemplateHiddenUpstreamParityRefs(t *testing.T) {
 	t.Parallel()
-	if !strings.Contains(pageTemplate, "<!--") {
-		t.Fatal("expected HTML comments documenting unsupported upstream controls")
-	}
 	for _, needle := range []string{
+		`type="hidden"`,
 		`value="execute"`,
 		`value="explain"`,
 		`value="unanalyze"`,
 		`value="pipe"`,
 	} {
 		if !strings.Contains(pageTemplate, needle) {
-			t.Fatalf("expected commented reference to %q for upstream parity", needle)
+			t.Fatalf("expected hidden parity marker %q in pageTemplate", needle)
 		}
+	}
+	// Unsupported parity refs must omit name so URLSearchParams POST is unchanged.
+	if strings.Contains(pageTemplate, `type="hidden" name="mode"`) {
+		t.Fatal("hidden upstream refs must not use name=mode (would pollute POST)")
+	}
+	if strings.Contains(pageTemplate, `type="hidden" name="target_syntax_mode"`) {
+		t.Fatal("hidden pipe ref must not use name=target_syntax_mode")
 	}
 }
