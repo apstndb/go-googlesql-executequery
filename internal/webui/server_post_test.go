@@ -19,7 +19,7 @@ func TestHandlerRunAcceptsMultipartFormData(t *testing.T) {
 
 	var buf bytes.Buffer
 	mw := multipart.NewWriter(&buf)
-	if err := mw.WriteField("sql", "SELECT 1 AS x"); err != nil {
+	if err := mw.WriteField("query", "SELECT 1 AS x"); err != nil {
 		t.Fatal(err)
 	}
 	if err := mw.WriteField("catalog", "sample"); err != nil {
@@ -60,41 +60,6 @@ func TestHandlerRunAcceptsMultipartFormData(t *testing.T) {
 	}
 }
 
-func TestHandlerRunAcceptsQueryFieldAlias(t *testing.T) {
-	t.Parallel()
-	srv := NewServer(0)
-	ts := httptest.NewServer(srv.Handler())
-	defer ts.Close()
-
-	form := url.Values{}
-	form.Set("query", "SELECT 1 AS x")
-	form.Set("catalog", "sample")
-	form.Add("mode", "parse")
-
-	req, err := http.NewRequest(http.MethodPost, ts.URL+"/run", strings.NewReader(form.Encode()))
-	if err != nil {
-		t.Fatal(err)
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("status %d", resp.StatusCode)
-	}
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(body), `class="result"`) {
-		t.Fatalf("unexpected body: %s", truncateRunTest(string(body), 600))
-	}
-}
-
 func TestHandlerRunAcceptsURLEncodedForm(t *testing.T) {
 	t.Parallel()
 	srv := NewServer(0)
@@ -102,7 +67,7 @@ func TestHandlerRunAcceptsURLEncodedForm(t *testing.T) {
 	defer ts.Close()
 
 	form := url.Values{}
-	form.Set("sql", "SELECT 1 AS x")
+	form.Set("query", "SELECT 1 AS x")
 	form.Set("catalog", "sample")
 	form.Add("mode", "parse")
 	form.Add("mode", "analyze")

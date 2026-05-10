@@ -7,8 +7,8 @@ import (
 	executequery "github.com/apstndb/go-googlesql-executequery"
 )
 
-// configFromForm builds executequery.Config from POST parameters (names mirror
-// google/googlesql tools/execute_query/web/page_body.html where applicable).
+// configFromForm builds executequery.Config from POST parameters (names match
+// the embedded page template in template.go: textarea name="query", etc.).
 func configFromForm(r *http.Request) (executequery.Config, error) {
 	var cfg executequery.Config
 
@@ -41,7 +41,7 @@ func configFromForm(r *http.Request) (executequery.Config, error) {
 		}
 	}
 
-	if v := normalizeLanguageFeaturesChoice(strings.TrimSpace(r.FormValue("language-features"))); v != "" {
+	if v := strings.TrimSpace(r.FormValue("language-features")); v != "" {
 		fs, err := executequery.ParseFeatureSet(v)
 		if err != nil {
 			return executequery.Config{}, err
@@ -58,14 +58,4 @@ func configFromForm(r *http.Request) (executequery.Config, error) {
 	}
 
 	return cfg, nil
-}
-
-// normalizeLanguageFeaturesChoice maps upstream web UI spellings to flag syntax.
-func normalizeLanguageFeaturesChoice(s string) string {
-	switch strings.ToUpper(strings.TrimSpace(s)) {
-	case "MAXIMUM":
-		return "ALL_MINUS_DEV"
-	default:
-		return s
-	}
 }

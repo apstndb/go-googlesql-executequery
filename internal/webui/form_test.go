@@ -10,16 +10,6 @@ import (
 	executequery "github.com/apstndb/go-googlesql-executequery"
 )
 
-func TestNormalizeLanguageFeaturesChoice(t *testing.T) {
-	t.Parallel()
-	if got := normalizeLanguageFeaturesChoice("MAXIMUM"); got != "ALL_MINUS_DEV" {
-		t.Fatalf("got %q", got)
-	}
-	if got := normalizeLanguageFeaturesChoice("NONE"); got != "NONE" {
-		t.Fatalf("got %q", got)
-	}
-}
-
 func TestConfigFromFormAdvanced(t *testing.T) {
 	t.Parallel()
 	form := url.Values{}

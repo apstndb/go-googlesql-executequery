@@ -74,9 +74,8 @@ func defaultIndexData() indexData {
 		},
 		LanguageFeatures: []selectOpt{
 			{Value: "NONE", Label: "NONE"},
-			{Value: "MAXIMUM", Label: "MAXIMUM", Selected: true},
 			{Value: "ALL", Label: "ALL"},
-			{Value: "ALL_MINUS_DEV", Label: "ALL_MINUS_DEV"},
+			{Value: "ALL_MINUS_DEV", Label: "ALL_MINUS_DEV", Selected: true},
 			{Value: "DEFAULTS", Label: "DEFAULTS"},
 			{Value: "DEFAULTS_MINUS_DEV", Label: "DEFAULTS_MINUS_DEV"},
 		},

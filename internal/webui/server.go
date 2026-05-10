@@ -75,9 +75,6 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 
 	sql := strings.TrimSpace(r.FormValue("query"))
 	if sql == "" {
-		sql = strings.TrimSpace(r.FormValue("sql"))
-	}
-	if sql == "" {
 		http.Error(w, "no SQL provided", http.StatusBadRequest)
 		return
 	}
