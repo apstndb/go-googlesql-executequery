@@ -26,8 +26,8 @@ type Writer interface {
 	// Resolved emits analyze-mode output (the resolved AST).
 	Resolved(debug string) error
 
-	// Described emits DESCRIBE-statement output (table schema /
-	// function signature / etc.).
+	// Described emits DESCRIBE output (boxed column layout matching upstream
+	// execute_query default output_mode=box for execute-style results).
 	Described(text string) error
 
 	// StartStatement is called at the start of each statement.
@@ -47,7 +47,8 @@ type Writer interface {
 // mirror the C++ tool; go-googlesql only provides Unparse and per-node debug
 // helpers—see parseTreeDebugString for the parse-tree workaround.
 //
-// Analyze and describe output remain labeled (`[analyze]`, `[describe]`) for readability.
+// Analyze output remains labeled (`[analyze]`) for readability. Describe output
+// is plain text (often Unicode-boxed) matching upstream execute_query with default box mode.
 func NewTextWriter(w io.Writer) Writer { return &textWriter{w: w} }
 
 type textWriter struct {
@@ -98,7 +99,15 @@ func (t *textWriter) Unparsed(sql string) error {
 	return nil
 }
 func (t *textWriter) Resolved(debug string) error { return t.writeSection("analyze", debug) }
-func (t *textWriter) Described(text string) error { return t.writeSection("describe", text) }
+
+func (t *textWriter) Described(text string) error {
+	text = trimTrailingNewlines(text)
+	if _, err := fmt.Fprintf(t.w, "%s\n", text); err != nil {
+		return err
+	}
+	t.first = true
+	return nil
+}
 
 func (t *textWriter) StartStatement(isFirst bool) error {
 	if !isFirst {

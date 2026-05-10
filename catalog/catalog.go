@@ -9,6 +9,7 @@ package catalog
 import (
 	"fmt"
 	"strings"
+	"unicode/utf8"
 
 	googlesql "github.com/goccy/go-googlesql"
 )
@@ -258,22 +259,36 @@ func buildTable(ts TableSchema, tf *googlesql.TypeFactory) (*googlesql.SimpleTab
 	return tbl, nil
 }
 
-// FormatTable renders a TableSchema as plain text (one column per
-// line). Used by the DESCRIBE handler.
+// Format renders table metadata like upstream ExecuteDescribe's table branch in
+// google/googlesql/tools/execute_query/execute_query_tool.cc (plain text before
+// the execute_query tool wraps it in box output).
 func (t *TableSchema) Format() string {
 	var b strings.Builder
-	fmt.Fprintf(&b, "Table %s:\n", t.Name)
+	fmt.Fprintf(&b, "Table: %s\n", t.Name)
+	if len(t.Columns) == 0 {
+		if len(t.PrimaryKey) > 0 {
+			fmt.Fprintf(&b, "Primary key: (%s)\n", strings.Join(t.PrimaryKey, ", "))
+		}
+		return strings.TrimRight(b.String(), "\n")
+	}
+	maxName := 0
+	for _, c := range t.Columns {
+		if n := utf8.RuneCountInString(c.Name); n > maxName {
+			maxName = n
+		}
+	}
+	fmt.Fprintf(&b, "Columns:\n")
 	for _, c := range t.Columns {
 		label := c.TypeName
 		if label == "" {
 			label = typeKindName(c.Kind)
 		}
-		fmt.Fprintf(&b, "  %s %s\n", c.Name, label)
+		fmt.Fprintf(&b, "  %-*s %s\n", maxName, c.Name, label)
 	}
 	if len(t.PrimaryKey) > 0 {
 		fmt.Fprintf(&b, "Primary key: (%s)\n", strings.Join(t.PrimaryKey, ", "))
 	}
-	return b.String()
+	return strings.TrimRight(b.String(), "\n")
 }
 
 // typeKindName renders a TypeKind as its upstream-style upper-case

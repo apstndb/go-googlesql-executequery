@@ -142,8 +142,8 @@ func TestRunDescribe(t *testing.T) {
 	if len(w.desc) != 1 {
 		t.Fatalf("expected one DESCRIBE emit, got %d", len(w.desc))
 	}
-	if !strings.Contains(w.desc[0], "O_ORDERKEY") {
-		t.Errorf("describe output missing column: %s", w.desc[0])
+	if !strings.Contains(w.desc[0], "O_ORDERKEY") || !strings.Contains(w.desc[0], "┌") {
+		t.Errorf("describe output missing boxed TPCH schema: %s", w.desc[0])
 	}
 }
 

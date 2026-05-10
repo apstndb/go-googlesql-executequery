@@ -34,7 +34,9 @@ func describeIfApplicable(stmt googlesql.ASTStatementNode, schema *catalog.Schem
 	}
 	name := strings.Join(parts, ".")
 	if t, ok := schema.FindTable(name); ok {
-		return true, w.Described(t.Format())
+		// Inner text matches upstream ExecuteDescribe table formatting
+		// (execute_query_tool.cc); box matches default box output (output_query_result.cc).
+		return true, w.Described(boxUnicodeSingleColumn("Describe", t.Format()))
 	}
 	return true, w.Described(fmt.Sprintf("Object %q not found in catalog %q", name, schema.Name))
 }
