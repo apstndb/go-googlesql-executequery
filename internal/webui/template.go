@@ -1,5 +1,79 @@
 package webui
 
+import "html/template"
+
+// indexData drives page_body-style markup (google/googlesql page_body.html).
+type indexData struct {
+	ToolModes         []toolModeRow
+	Catalogs          []selectOpt
+	SQLModes          []radioRow
+	TargetSyntaxModes []radioRow
+	LanguageFeatures  []selectOpt
+	ASTRewrites       []selectOpt
+}
+
+type toolModeRow struct {
+	Value   string
+	Label   string
+	Checked bool
+}
+
+type radioRow struct {
+	Value   string
+	Label   string
+	Checked bool
+}
+
+type selectOpt struct {
+	Value    string
+	Label    string
+	Selected bool
+}
+
+func defaultIndexData() indexData {
+	return indexData{
+		ToolModes: []toolModeRow{
+			{Value: "execute", Label: "execute", Checked: false},
+			{Value: "analyze", Label: "analyze", Checked: true},
+			{Value: "parse", Label: "parse", Checked: true},
+			{Value: "explain", Label: "explain", Checked: false},
+			{Value: "unanalyze", Label: "unanalyze", Checked: false},
+			{Value: "unparse", Label: "unparse", Checked: false},
+		}, // order matches google/googlesql page_body.html
+		Catalogs: []selectOpt{
+			{Value: "none", Label: "none"},
+			{Value: "sample", Label: "sample", Selected: true},
+			{Value: "tpch", Label: "tpch"},
+			{Value: "tpch_graph", Label: "tpch_graph"},
+		},
+		SQLModes: []radioRow{
+			{Value: "query", Label: "Query", Checked: true},
+			{Value: "expression", Label: "Expression", Checked: false},
+			{Value: "script", Label: "Script", Checked: false},
+		},
+		TargetSyntaxModes: []radioRow{
+			{Value: "standard", Label: "Standard", Checked: true},
+			{Value: "pipe", Label: "Pipe", Checked: false},
+		},
+		LanguageFeatures: []selectOpt{
+			{Value: "NONE", Label: "NONE"},
+			{Value: "MAXIMUM", Label: "MAXIMUM (maps to ALL_MINUS_DEV)", Selected: true},
+			{Value: "ALL", Label: "ALL"},
+			{Value: "ALL_MINUS_DEV", Label: "ALL_MINUS_DEV"},
+			{Value: "DEFAULTS", Label: "DEFAULTS"},
+			{Value: "DEFAULTS_MINUS_DEV", Label: "DEFAULTS_MINUS_DEV"},
+		},
+		ASTRewrites: []selectOpt{
+			{Value: "", Label: "(default analyzer rewrites)", Selected: true},
+			{Value: "NONE", Label: "NONE"},
+			{Value: "ALL", Label: "ALL"},
+			{Value: "ALL_MINUS_DEV", Label: "ALL_MINUS_DEV"},
+			{Value: "DEFAULTS", Label: "DEFAULTS"},
+			{Value: "DEFAULTS_MINUS_DEV", Label: "DEFAULTS_MINUS_DEV"},
+		},
+	}
+}
+
 const pageTemplate = `<!DOCTYPE html>
 <html>
 <head>
@@ -58,6 +132,24 @@ select {
   display: inline;
   font-weight: normal;
   cursor: pointer;
+}
+.radio-group label {
+  display: inline;
+  font-weight: normal;
+  margin-right: 16px;
+  cursor: pointer;
+}
+fieldset {
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  padding: 12px;
+}
+legend {
+  font-weight: 600;
+  color: #555;
+}
+details {
+  margin-top: 8px;
 }
 button {
   background: #1a73e8;
@@ -118,25 +210,65 @@ hr {
 <form id="queryForm" action="/run" method="post">
   <div class="form-group">
     <label for="sql">SQL</label>
-    <textarea id="sql" name="sql" placeholder="SELECT 1 AS col1, 'hello' AS col2;" required></textarea>
+    <textarea id="sql" name="sql" placeholder="SELECT 1 AS col1, 'hello' AS col2;"></textarea>
   </div>
   <div class="form-group">
-    <label>Mode</label>
-    <div class="checkbox-group">
-      <label><input type="checkbox" name="mode" value="parse" checked> parse</label>
-      <label><input type="checkbox" name="mode" value="unparse"> unparse</label>
-      <label><input type="checkbox" name="mode" value="analyze" checked> analyze</label>
-    </div>
+    <fieldset>
+      <legend>Mode</legend>
+      <div class="checkbox-group">
+        {{- range .ToolModes}}
+        <label><input type="checkbox" name="mode" value="{{.Value}}"{{if .Checked}} checked{{end}}> {{.Label}}</label>
+        {{- end}}
+      </div>
+    </fieldset>
   </div>
   <div class="form-group">
     <label for="catalog">Catalog</label>
     <select id="catalog" name="catalog">
-      <option value="none">none</option>
-      <option value="sample" selected>sample</option>
-      <option value="tpch">tpch</option>
-      <option value="tpch_graph">tpch_graph</option>
+      {{- range .Catalogs}}
+      <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>
+      {{- end}}
     </select>
   </div>
+  <details>
+    <summary>Advanced Options</summary>
+    <div class="form-group">
+      <fieldset>
+        <legend>SQL Mode</legend>
+        <div class="radio-group">
+          {{- range .SQLModes}}
+          <label><input type="radio" name="sql_mode" value="{{.Value}}"{{if .Checked}} checked{{end}}> {{.Label}}</label>
+          {{- end}}
+        </div>
+      </fieldset>
+    </div>
+    <div class="form-group">
+      <fieldset>
+        <legend>Unanalyze Syntax Mode</legend>
+        <div class="radio-group">
+          {{- range .TargetSyntaxModes}}
+          <label><input type="radio" name="target_syntax_mode" value="{{.Value}}"{{if .Checked}} checked{{end}}> {{.Label}}</label>
+          {{- end}}
+        </div>
+      </fieldset>
+    </div>
+    <div class="form-group">
+      <label for="language-features">Enabled Language Features</label>
+      <select name="language-features" id="language-features">
+        {{- range .LanguageFeatures}}
+        <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>
+        {{- end}}
+      </select>
+    </div>
+    <div class="form-group">
+      <label for="ast-rewrites">Enabled AST Rewrites</label>
+      <select name="ast-rewrites" id="ast-rewrites">
+        {{- range .ASTRewrites}}
+        <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>
+        {{- end}}
+      </select>
+    </div>
+  </details>
   <button type="submit">Run</button>
 </form>
 <div id="result"></div>
@@ -148,9 +280,6 @@ document.getElementById('queryForm').addEventListener('submit', async function(e
   const result = document.getElementById('result');
   result.innerHTML = '<p>Running...</p>';
   try {
-    // Match native HTML form POST (google/googlesql page_body.html uses method="post"):
-    // application/x-www-form-urlencoded. fetch()+FormData defaults to multipart/form-data,
-    // which is unnecessary here and has been unreliable for textarea values with some clients.
     const fd = new FormData(form);
     const params = new URLSearchParams();
     for (const pair of fd.entries()) {
@@ -171,3 +300,5 @@ document.getElementById('queryForm').addEventListener('submit', async function(e
 </body>
 </html>
 `
+
+var tmpl = template.Must(template.New("webui").Parse(pageTemplate))

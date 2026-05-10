@@ -260,6 +260,8 @@ func (s *runState) runExpressionMode() error {
 			if err := s.w.Resolved(text); err != nil {
 				return err
 			}
+		default:
+			return modeUnsupportedf(string(mode), mode.UnsupportedReason())
 		}
 	}
 	return s.w.FlushStatement(true, "")
@@ -313,6 +315,8 @@ func (s *runState) runScriptMode() error {
 			if err := s.w.Resolved("(analyze in script mode is not yet implemented in this Go port; emit per-statement parse / analyze instead)"); err != nil {
 				return err
 			}
+		default:
+			return modeUnsupportedf(string(mode), mode.UnsupportedReason())
 		}
 	}
 	return s.w.FlushStatement(true, "")

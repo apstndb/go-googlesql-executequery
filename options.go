@@ -58,11 +58,9 @@ type Config struct {
 // first ErrUnsupported* (wrapped) error found. The order is stable
 // so test goldens can pin it.
 func (c *Config) Validate() error {
-	for _, m := range c.Modes {
-		if !m.IsSupported() {
-			return modeUnsupportedf(string(m), m.UnsupportedReason())
-		}
-	}
+	// Unsupported tool modes (execute / explain / unanalyze) are not rejected
+	// here so callers can surface ErrUnsupportedMode from Run — including the
+	// web UI, which mirrors upstream checkboxes and shows the reason inline.
 	if c.SQLMode != "" && c.SQLMode != SQLModeQuery && c.SQLMode != SQLModeExpression && c.SQLMode != SQLModeScript {
 		return sqlModeUnsupportedf(string(c.SQLMode), "unknown sql_mode")
 	}
