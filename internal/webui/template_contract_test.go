@@ -21,24 +21,28 @@ func TestPageTemplateUsesUrlEncodedFetchBody(t *testing.T) {
 	}
 }
 
-func TestPageTemplateHiddenUpstreamParityRefs(t *testing.T) {
+func TestPageTemplateUpstreamOnlyModesUseHiddenUncheckedControls(t *testing.T) {
 	t.Parallel()
-	for _, needle := range []string{
-		`type="hidden"`,
-		`value="execute"`,
-		`value="explain"`,
-		`value="unanalyze"`,
-		`value="pipe"`,
+	if !strings.Contains(pageTemplate, `webui-upcoming-tool-modes`) {
+		t.Fatal("expected wrapper for upcoming tool modes")
+	}
+	for _, pair := range []struct{ val, kind string }{
+		{"execute", "checkbox"},
+		{"explain", "checkbox"},
+		{"unanalyze", "checkbox"},
 	} {
-		if !strings.Contains(pageTemplate, needle) {
-			t.Fatalf("expected hidden parity marker %q in pageTemplate", needle)
+		// Require checkbox inputs with name=mode (unchecked); not type=hidden.
+		if !strings.Contains(pageTemplate, `<input type="`+pair.kind+`" name="mode" value="`+pair.val+`"`) {
+			t.Fatalf("expected checkbox name=mode value=%s", pair.val)
 		}
 	}
-	// Unsupported parity refs must omit name so URLSearchParams POST is unchanged.
 	if strings.Contains(pageTemplate, `type="hidden" name="mode"`) {
-		t.Fatal("hidden upstream refs must not use name=mode (would pollute POST)")
+		t.Fatal("do not use hidden inputs named mode — use unchecked checkboxes inside a hidden wrapper")
 	}
-	if strings.Contains(pageTemplate, `type="hidden" name="target_syntax_mode"`) {
-		t.Fatal("hidden pipe ref must not use name=target_syntax_mode")
+	if !strings.Contains(pageTemplate, `webui-upcoming-target-syntax-pipe`) {
+		t.Fatal("expected wrapper label for pipe target syntax")
+	}
+	if !strings.Contains(pageTemplate, `<input type="radio" name="target_syntax_mode" value="pipe"`) {
+		t.Fatal("expected pipe radio in group with standard (standard stays checked; pipe not submitted)")
 	}
 }

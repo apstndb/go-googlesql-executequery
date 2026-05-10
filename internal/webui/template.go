@@ -218,10 +218,14 @@ hr {
         <label><input type="checkbox" name="mode" value="{{.Value}}"{{if .Checked}} checked{{end}}> {{.Label}}</label>
         {{- end}}
       </div>
-      {{/* Hidden placeholders mirror upstream page_body.html modes; no name="" so they are not submitted. */}}
-      <input type="hidden" value="execute" title="Upstream mode execute — ErrUnsupportedMode (ReasonModeExecute). Omits name so POST is unchanged.">
-      <input type="hidden" value="explain" title="Upstream mode explain — ErrUnsupportedMode (ReasonModeExplain). Omits name so POST is unchanged.">
-      <input type="hidden" value="unanalyze" title="Upstream mode unanalyze — ErrUnsupportedMode (ReasonModeUnanalyze). Omits name so POST is unchanged.">
+      {{/* Full checkbox markup matching upstream; wrapper hidden until supported. Unchecked boxes are not submitted. */}}
+      <div hidden class="webui-upcoming-tool-modes" title="Drop the hidden attribute when these modes are supported (today ErrUnsupportedMode).">
+        <div class="checkbox-group">
+          <label><input type="checkbox" name="mode" value="execute"> execute</label>
+          <label><input type="checkbox" name="mode" value="explain"> explain</label>
+          <label><input type="checkbox" name="mode" value="unanalyze"> unanalyze</label>
+        </div>
+      </div>
     </fieldset>
   </div>
   <div class="form-group">
@@ -252,8 +256,8 @@ hr {
           <label><input type="radio" name="target_syntax_mode" value="{{.Value}}"{{if .Checked}} checked{{end}}> {{.Label}}</label>
           {{- end}}
         </div>
-        {{/* Pipe syntax option — no name so not submitted; enable when target_syntax pipe is supported. */}}
-        <input type="hidden" value="pipe" title="Upstream target_syntax pipe — ErrUnsupportedFlag (ReasonFlagTargetSyntax). Omits name so POST is unchanged.">
+        {{/* Pipe radio matches upstream; label hidden until supported. With standard selected, pipe is not submitted. */}}
+        <label hidden class="webui-upcoming-target-syntax-pipe" title="Remove hidden when pipe syntax is supported (ErrUnsupportedFlag target_syntax)."><input type="radio" name="target_syntax_mode" value="pipe"> Pipe</label>
       </fieldset>
     </div>
     <div class="form-group">
