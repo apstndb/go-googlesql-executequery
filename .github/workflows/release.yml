@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Git tag to attach binaries to (e.g. v0.2.20260509)'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Resolve tag
+        id: meta
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ inputs.tag }}"
+          else
+            TAG="${{ github.ref_name }}"
+          fi
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "version=${TAG#v}" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.meta.outputs.tag }}
+          submodules: recursive
+
+      - uses: jdx/mise-action@v2
+        with:
+          experimental: true
+
+      - run: mise run generate
+
+      - name: Build release archives
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          build_tar() {
+            local goos=$1 goarch=$2 out=$3
+            rm -f execute_query
+            GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 \
+              go build -trimpath -ldflags="-s -w" -o execute_query ./cmd/execute_query
+            tar czvf "dist/${out}" execute_query
+            rm -f execute_query
+          }
+          build_zip() {
+            local goos=$1 goarch=$2 out=$3
+            rm -f execute_query.exe
+            GOOS="$goos" GOARCH="$goarch" CGO_ENABLED=0 \
+              go build -trimpath -ldflags="-s -w" -o execute_query.exe ./cmd/execute_query
+            zip -j "dist/${out}" execute_query.exe
+            rm -f execute_query.exe
+          }
+          build_tar linux amd64 "execute_query_${VERSION}_linux_amd64.tar.gz"
+          build_tar linux arm64 "execute_query_${VERSION}_linux_arm64.tar.gz"
+          build_tar darwin amd64 "execute_query_${VERSION}_darwin_amd64.tar.gz"
+          build_tar darwin arm64 "execute_query_${VERSION}_darwin_arm64.tar.gz"
+          build_zip windows amd64 "execute_query_${VERSION}_windows_amd64.zip"
+
+      - name: SHA256 checksums
+        working-directory: dist
+        run: sha256sum execute_query_* > SHA256SUMS
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          files: dist/*

@@ -25,8 +25,35 @@
    - Default: today's UTC date.
    - If a tag already exists for that date, increment by one day until
      free.
-4. `git tag v<MAJOR>.<MINOR>.<YYYYMMDD>` and push the tag.
-5. Confirm CI is green on `main` for that commit.
+4. Confirm CI is green on `main` for the commit you intend to release
+   (see [CI verification](#ci-verification) below).
+5. `git tag -a v<MAJOR>.<MINOR>.<YYYYMMDD>` and `git push origin <tag>`.
+6. Confirm the **Release** workflow (`.github/workflows/release.yml`)
+   completed successfully for that tag. It cross-builds `execute_query`
+   for linux (amd64, arm64), darwin (amd64, arm64), and windows (amd64),
+   uploads archives plus `SHA256SUMS` to the GitHub release, and names
+   assets so [mise](https://mise.jdx.dev/dev-tools/backends/github.html)
+   can pick the correct archive per OS/arch without extra configuration.
+
+### Installing via mise (`github:` backend)
+
+After a release has assets attached:
+
+```sh
+mise use -g github:apstndb/go-googlesql-executequery@v0.2.YYYYMMDD
+# or
+mise install github:apstndb/go-googlesql-executequery@latest
+```
+
+Pre-built archives follow `execute_query_0.2.YYYYMMDD_linux_amd64.tar.gz` (and
+similar); mise matches `linux` / `darwin` / `windows` and `amd64` /
+`arm64` in the filename.
+
+### Back-filling assets for an older tag
+
+If a tag predates the Release workflow or assets failed to upload, run
+**Actions → Release → Run workflow**, set **tag** to the existing tag
+(e.g. `v0.2.20260509`), and re-upload to that GitHub release.
 
 ## CI verification
 
