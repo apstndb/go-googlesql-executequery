@@ -41,7 +41,7 @@
 After a release has assets attached:
 
 ```sh
-mise use -g github:apstndb/go-googlesql-executequery@v0.2.YYYYMMDD
+mise use -g github:apstndb/go-googlesql-executequery@0.2.YYYYMMDD
 # or
 mise install github:apstndb/go-googlesql-executequery@latest
 ```
