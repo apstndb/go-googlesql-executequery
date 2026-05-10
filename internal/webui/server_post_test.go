@@ -55,7 +55,7 @@ func TestHandlerRunAcceptsMultipartFormData(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := string(body)
-	if !strings.Contains(s, `class="result-section"`) {
+	if !strings.Contains(s, `class="result"`) {
 		t.Fatalf("unexpected body: %s", truncateRunTest(s, 600))
 	}
 }
@@ -90,7 +90,7 @@ func TestHandlerRunAcceptsQueryFieldAlias(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(body), `class="result-section"`) {
+	if !strings.Contains(string(body), `class="result"`) {
 		t.Fatalf("unexpected body: %s", truncateRunTest(string(body), 600))
 	}
 }
@@ -127,7 +127,7 @@ func TestHandlerRunAcceptsURLEncodedForm(t *testing.T) {
 		t.Fatal(err)
 	}
 	s := string(body)
-	if !strings.Contains(s, `class="result-section"`) {
+	if !strings.Contains(s, `class="result"`) {
 		t.Fatalf("unexpected body: %s", truncateRunTest(s, 600))
 	}
 }

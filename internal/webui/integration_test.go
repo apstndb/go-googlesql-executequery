@@ -51,10 +51,10 @@ func TestWebUIHeadlessFormSubmit(t *testing.T) {
 	// Content-Type application/x-www-form-urlencoded (not multipart FormData).
 	submitJS := `
 (async () => {
-  const form = document.getElementById('queryForm');
+  const form = document.getElementById('form');
   const result = document.getElementById('result');
   result.innerHTML = '<p>Running...</p>';
-  document.querySelector('#sql').value = 'SELECT 1 AS x';
+  document.querySelector('#query').value = 'SELECT 1 AS x';
   const fd = new FormData(form);
   const params = new URLSearchParams();
   for (const pair of fd.entries()) {
@@ -71,7 +71,7 @@ func TestWebUIHeadlessFormSubmit(t *testing.T) {
 
 	err := chromedp.Run(taskCtx,
 		chromedp.Navigate(page),
-		chromedp.WaitVisible(`#sql`, chromedp.ByQuery),
+		chromedp.WaitVisible(`#query`, chromedp.ByQuery),
 		chromedp.Evaluate(submitJS, nil, func(p *runtime.EvaluateParams) *runtime.EvaluateParams {
 			return p.WithAwaitPromise(true)
 		}),
@@ -81,7 +81,7 @@ func TestWebUIHeadlessFormSubmit(t *testing.T) {
 		t.Fatalf("chromedp: %v", err)
 	}
 
-	if !strings.Contains(resultHTML, `result-section`) {
+	if !strings.Contains(resultHTML, `class="result"`) {
 		t.Fatalf("missing result sections in %#q", truncate(resultHTML, 800))
 	}
 	if !strings.Contains(resultHTML, "Parse") {

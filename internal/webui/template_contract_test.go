@@ -1,6 +1,7 @@
 package webui
 
 import (
+	"html/template"
 	"strings"
 	"testing"
 )
@@ -21,21 +22,47 @@ func TestPageTemplateUsesUrlEncodedFetchBody(t *testing.T) {
 	}
 }
 
+func TestPageTemplateMatchesUpstreamPageShape(t *testing.T) {
+	t.Parallel()
+	for _, needle := range []string{
+		`<main>`,
+		`id="header"`,
+		`class="left-section"`,
+		`id="form"`,
+		`id="query"`,
+		`name="query"`,
+		`class="right-section"`,
+		`id="statements"`,
+		`id="catalog-select"`,
+		`id="language-features-select"`,
+		`hljs.highlightAll`,
+	} {
+		if !strings.Contains(pageTemplate, needle) {
+			t.Fatalf("expected upstream-shaped marker %q in pageTemplate", needle)
+		}
+	}
+}
+
 func TestPageTemplateUpstreamOnlyModesUseHiddenUncheckedControls(t *testing.T) {
 	t.Parallel()
+	var buf strings.Builder
+	if err := tmpl.Execute(&buf, pageData{
+		Style:     template.CSS(""),
+		indexData: defaultIndexData(),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	html := buf.String()
 	for _, val := range []string{"execute", "explain", "unanalyze"} {
-		needle := `<input type="checkbox" name="mode" value="` + val + `" hidden`
-		if !strings.Contains(pageTemplate, needle) {
+		needle := `<input type="checkbox" name="mode" value="` + val + `" id="mode-` + val + `" hidden`
+		if !strings.Contains(html, needle) {
 			t.Fatalf("expected hidden checkbox name=mode value=%s", val)
 		}
 	}
-	if strings.Contains(pageTemplate, `type="hidden" name="mode"`) {
+	if strings.Contains(html, `type="hidden" name="mode"`) {
 		t.Fatal("do not use type=hidden for mode — use unchecked checkbox with hidden attribute")
 	}
-	if !strings.Contains(pageTemplate, `<input type="radio" name="target_syntax_mode" value="pipe" hidden`) {
-		t.Fatal("expected hidden pipe radio (standard selected; pipe not submitted)")
-	}
-	if strings.Contains(pageTemplate, `webui-upcoming-tool-modes`) {
-		t.Fatal("drop redundant wrapper div — hidden lives on each control")
+	if !strings.Contains(html, `webui-upcoming-target-syntax-pipe`) {
+		t.Fatal("expected unsupported pipe option wrapper")
 	}
 }

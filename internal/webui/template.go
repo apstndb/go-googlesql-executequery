@@ -1,13 +1,22 @@
 package webui
 
-import "html/template"
+import (
+	_ "embed"
+	"html/template"
+)
 
-// indexData drives page_body-style markup (google/googlesql page_body.html).
+// page_style.css is a verbatim copy of google/googlesql tools/execute_query/web/style.css
+// (Apache-2.0); kept in-repo for go:embed so the Go UI matches upstream layout/CSS without a civetweb dependency.
+//
+//go:embed page_style.css
+var pageStyleCSS string
+
+// indexData mirrors google/googlesql tools/execute_query/web/page_body.html field names and structure.
 type indexData struct {
 	ToolModes         []toolModeRow
 	Catalogs          []selectOpt
 	SQLModes          []radioRow
-	TargetSyntaxModes []radioRow
+	TargetSyntaxModes []radioRow // standard only; Pipe is a separate span in the template (unsupported)
 	LanguageFeatures  []selectOpt
 	ASTRewrites       []selectOpt
 }
@@ -15,12 +24,15 @@ type indexData struct {
 type toolModeRow struct {
 	Value   string
 	Label   string
+	ID      string
 	Checked bool
+	Hidden  bool
 }
 
 type radioRow struct {
 	Value   string
 	Label   string
+	ID      string
 	Checked bool
 }
 
@@ -30,13 +42,21 @@ type selectOpt struct {
 	Selected bool
 }
 
+// pageData adds embedded stylesheet bytes (same roles as upstream page_template.html {{{css}}}).
+type pageData struct {
+	Style template.CSS
+	indexData
+}
+
 func defaultIndexData() indexData {
 	return indexData{
-		// parse / unparse / analyze only (see HTML comment in pageTemplate for upstream-only modes).
 		ToolModes: []toolModeRow{
-			{Value: "parse", Label: "parse", Checked: true},
-			{Value: "unparse", Label: "unparse", Checked: false},
-			{Value: "analyze", Label: "analyze", Checked: true},
+			{Value: "execute", Label: "Execute", ID: "mode-execute", Checked: false, Hidden: true},
+			{Value: "analyze", Label: "Analyze", ID: "mode-analyze", Checked: true, Hidden: false},
+			{Value: "parse", Label: "Parse", ID: "mode-parse", Checked: true, Hidden: false},
+			{Value: "explain", Label: "Explain", ID: "mode-explain", Checked: false, Hidden: true},
+			{Value: "unanalyze", Label: "Unanalyze", ID: "mode-unanalyze", Checked: false, Hidden: true},
+			{Value: "unparse", Label: "Unparse", ID: "mode-unparse", Checked: false, Hidden: false},
 		},
 		Catalogs: []selectOpt{
 			{Value: "none", Label: "none"},
@@ -45,24 +65,23 @@ func defaultIndexData() indexData {
 			{Value: "tpch_graph", Label: "tpch_graph"},
 		},
 		SQLModes: []radioRow{
-			{Value: "query", Label: "Query", Checked: true},
-			{Value: "expression", Label: "Expression", Checked: false},
-			{Value: "script", Label: "Script", Checked: false},
+			{Value: "query", Label: "Query", ID: "sql-mode-query", Checked: true},
+			{Value: "expression", Label: "Expression", ID: "sql-mode-expression", Checked: false},
+			{Value: "script", Label: "Script", ID: "sql-mode-script", Checked: false},
 		},
-		// standard only; pipe is documented in an HTML comment (unsupported target_syntax).
 		TargetSyntaxModes: []radioRow{
-			{Value: "standard", Label: "Standard", Checked: true},
+			{Value: "standard", Label: "Standard", ID: "target-syntax-mode-standard", Checked: true},
 		},
 		LanguageFeatures: []selectOpt{
 			{Value: "NONE", Label: "NONE"},
-			{Value: "MAXIMUM", Label: "MAXIMUM (maps to ALL_MINUS_DEV)", Selected: true},
+			{Value: "MAXIMUM", Label: "MAXIMUM", Selected: true},
 			{Value: "ALL", Label: "ALL"},
 			{Value: "ALL_MINUS_DEV", Label: "ALL_MINUS_DEV"},
 			{Value: "DEFAULTS", Label: "DEFAULTS"},
 			{Value: "DEFAULTS_MINUS_DEV", Label: "DEFAULTS_MINUS_DEV"},
 		},
 		ASTRewrites: []selectOpt{
-			{Value: "", Label: "(default analyzer rewrites)", Selected: true},
+			{Value: "", Label: "(default)", Selected: true},
 			{Value: "NONE", Label: "NONE"},
 			{Value: "ALL", Label: "ALL"},
 			{Value: "ALL_MINUS_DEV", Label: "ALL_MINUS_DEV"},
@@ -77,208 +96,89 @@ const pageTemplate = `<!DOCTYPE html>
 <head>
 <meta charset="utf-8">
 <title>GoogleSQL Execute Query</title>
-<style>
-body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 20px;
-  background: #f5f5f5;
-}
-.container {
-  background: white;
-  border-radius: 8px;
-  padding: 24px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-h1 {
-  margin-top: 0;
-  color: #333;
-}
-.form-group {
-  margin-bottom: 16px;
-}
-label {
-  display: block;
-  font-weight: 600;
-  margin-bottom: 4px;
-  color: #555;
-}
-textarea {
-  width: 100%;
-  min-height: 120px;
-  padding: 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
-  font-size: 14px;
-  resize: vertical;
-}
-select {
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background: white;
-  font-size: 14px;
-}
-.checkbox-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 16px;
-}
-.checkbox-group label {
-  display: inline;
-  font-weight: normal;
-  cursor: pointer;
-}
-.radio-group label {
-  display: inline;
-  font-weight: normal;
-  margin-right: 16px;
-  cursor: pointer;
-}
-fieldset {
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 12px;
-}
-legend {
-  font-weight: 600;
-  color: #555;
-}
-details {
-  margin-top: 8px;
-}
-button {
-  background: #1a73e8;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 4px;
-  font-size: 16px;
-  cursor: pointer;
-}
-button:hover {
-  background: #1557b0;
-}
-#result {
-  margin-top: 24px;
-  padding: 16px;
-  background: #fafafa;
-  border-radius: 4px;
-  border: 1px solid #e0e0e0;
-}
-.result-section {
-  margin-bottom: 16px;
-}
-.result-section h3 {
-  margin: 0 0 8px 0;
-  font-size: 14px;
-  text-transform: uppercase;
-  color: #666;
-  letter-spacing: 0.5px;
-}
-.result-section pre {
-  margin: 0;
-  padding: 12px;
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  overflow-x: auto;
-  font-size: 13px;
-  line-height: 1.5;
-}
-.result-error {
-  padding: 12px;
-  background: #fce8e6;
-  border: 1px solid #f5c6cb;
-  border-radius: 4px;
-  color: #721c24;
-}
-hr {
-  border: none;
-  border-top: 1px solid #e0e0e0;
-  margin: 16px 0;
-}
-</style>
+<style>{{.Style}}</style>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/styles/stackoverflow-light.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/highlight.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/sql.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.9.0/languages/less.min.js"></script>
+<script>hljs.highlightAll();</script>
 </head>
 <body>
-<div class="container">
-<h1>GoogleSQL Execute Query</h1>
-<form id="queryForm" action="/run" method="post">
-  <div class="form-group">
-    <label for="sql">SQL</label>
-    <textarea id="sql" name="sql" placeholder="SELECT 1 AS col1, 'hello' AS col2;"></textarea>
+<main>
+  <div id="header">
+    <a href="/">GoogleSQL Execute Query</a>
   </div>
-  <div class="form-group">
-    <fieldset>
-      <legend>Mode</legend>
-      <div class="checkbox-group">
-        {{- range .ToolModes}}
-        <label><input type="checkbox" name="mode" value="{{.Value}}"{{if .Checked}} checked{{end}}> {{.Label}}</label>
-        {{- end}}
+  <div class="left-section">
+    <div id="editor"></div>
+    <form id="form" action="/run" method="post">
+      <textarea id="query" tabindex="0" name="query" spellcheck="false" placeholder="Enter your query here..."></textarea>
+      <div class="options">
+        <div>
+          <fieldset>
+            <legend>Mode</legend>
+            {{- range .ToolModes}}
+            <span class="mode-option">
+              <input type="checkbox" name="mode" value="{{.Value}}" id="{{.ID}}"{{if .Checked}} checked{{end}}{{if .Hidden}} hidden{{end}}>
+              <label for="{{.ID}}">{{.Label}}</label>
+            </span>
+            {{- end}}
+          </fieldset>
+          <span class="select-options">
+            <label for="catalog-select">Catalog:</label>
+            <select name="catalog" id="catalog-select">
+              {{- range .Catalogs}}
+              <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>
+              {{- end}}
+            </select>
+          </span>
+          <details>
+            <summary>Advanced Options</summary>
+            <fieldset>
+              <legend>SQL Mode</legend>
+              {{- range .SQLModes}}
+              <input type="radio" name="sql_mode" value="{{.Value}}" id="{{.ID}}"{{if .Checked}} checked{{end}}>
+              <label for="{{.ID}}">{{.Label}}</label>
+              {{- end}}
+            </fieldset>
+            <fieldset>
+              <legend>Unanalyze Syntax Mode</legend>
+              {{- range .TargetSyntaxModes}}
+              <input type="radio" name="target_syntax_mode" value="{{.Value}}" id="{{.ID}}"{{if .Checked}} checked{{end}}>
+              <label for="{{.ID}}">{{.Label}}</label>
+              {{- end}}
+              <span hidden class="webui-upcoming-target-syntax-pipe">
+                <input type="radio" name="target_syntax_mode" value="pipe" id="target-syntax-mode-pipe">
+                <label for="target-syntax-mode-pipe">Pipe</label>
+              </span>
+            </fieldset>
+            <span class="select-options">
+              <label for="language-features-select">Enabled Language Features:</label>
+              <select name="language-features" id="language-features-select">
+                {{- range .LanguageFeatures}}
+                <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>
+                {{- end}}
+              </select>
+            </span>
+            <span class="select-options">
+              <label for="ast-rewrites-select">Enabled AST Rewrites:</label>
+              <select name="ast-rewrites" id="ast-rewrites-select">
+                {{- range .ASTRewrites}}
+                <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>
+                {{- end}}
+              </select>
+            </span>
+          </details>
+        </div>
+        <input type="submit" id="submit" value="Submit">
       </div>
-      {{/* Upcoming tool modes: drop hidden from each control when supported (ErrUnsupportedMode). Unchecked => omitted from POST. */}}
-      <input type="checkbox" name="mode" value="execute" hidden class="webui-upcoming-tool-mode" title="Remove hidden when execute mode is supported.">
-      <input type="checkbox" name="mode" value="explain" hidden class="webui-upcoming-tool-mode" title="Remove hidden when explain mode is supported.">
-      <input type="checkbox" name="mode" value="unanalyze" hidden class="webui-upcoming-tool-mode" title="Remove hidden when unanalyze mode is supported.">
-    </fieldset>
+    </form>
   </div>
-  <div class="form-group">
-    <label for="catalog">Catalog</label>
-    <select id="catalog" name="catalog">
-      {{- range .Catalogs}}
-      <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>
-      {{- end}}
-    </select>
+  <div class="right-section" id="statements">
+    <div id="result"></div>
   </div>
-  <details>
-    <summary>Advanced Options</summary>
-    <div class="form-group">
-      <fieldset>
-        <legend>SQL Mode</legend>
-        <div class="radio-group">
-          {{- range .SQLModes}}
-          <label><input type="radio" name="sql_mode" value="{{.Value}}"{{if .Checked}} checked{{end}}> {{.Label}}</label>
-          {{- end}}
-        </div>
-      </fieldset>
-    </div>
-    <div class="form-group">
-      <fieldset>
-        <legend>Unanalyze Syntax Mode</legend>
-        <div class="radio-group">
-          {{- range .TargetSyntaxModes}}
-          <label><input type="radio" name="target_syntax_mode" value="{{.Value}}"{{if .Checked}} checked{{end}}> {{.Label}}</label>
-          {{- end}}
-        </div>
-        {{/* Pipe: drop hidden when supported (ErrUnsupportedFlag target_syntax). Standard stays checked so pipe is not submitted. */}}
-        <input type="radio" name="target_syntax_mode" value="pipe" hidden class="webui-upcoming-target-syntax-pipe" title="Remove hidden when pipe syntax is supported.">
-      </fieldset>
-    </div>
-    <div class="form-group">
-      <label for="language-features">Enabled Language Features</label>
-      <select name="language-features" id="language-features">
-        {{- range .LanguageFeatures}}
-        <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>
-        {{- end}}
-      </select>
-    </div>
-    <div class="form-group">
-      <label for="ast-rewrites">Enabled AST Rewrites</label>
-      <select name="ast-rewrites" id="ast-rewrites">
-        {{- range .ASTRewrites}}
-        <option value="{{.Value}}"{{if .Selected}} selected{{end}}>{{.Label}}</option>
-        {{- end}}
-      </select>
-    </div>
-  </details>
-  <button type="submit">Run</button>
-</form>
-<div id="result"></div>
-</div>
+</main>
 <script>
-document.getElementById('queryForm').addEventListener('submit', async function(e) {
+document.getElementById('form').addEventListener('submit', async function(e) {
   e.preventDefault();
   const form = e.target;
   const result = document.getElementById('result');
@@ -296,8 +196,11 @@ document.getElementById('queryForm').addEventListener('submit', async function(e
     });
     const html = await response.text();
     result.innerHTML = html;
+    if (window.hljs) {
+      result.querySelectorAll('pre code').forEach(function(el) { hljs.highlightElement(el); });
+    }
   } catch (err) {
-    result.innerHTML = '<div class="result-error">' + err.message + '</div>';
+    result.innerHTML = '<pre id="error" class="error">' + err.message + '</pre>';
   }
 });
 </script>

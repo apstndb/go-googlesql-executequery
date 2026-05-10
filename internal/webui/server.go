@@ -3,6 +3,7 @@ package webui
 
 import (
 	"fmt"
+	"html/template"
 	"mime"
 	"net/http"
 	"strings"
@@ -40,8 +41,10 @@ func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	data := defaultIndexData()
-	if err := tmpl.Execute(w, data); err != nil {
+	if err := tmpl.Execute(w, pageData{
+		Style:     template.CSS(pageStyleCSS),
+		indexData: defaultIndexData(),
+	}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }
@@ -70,9 +73,9 @@ func (s *Server) handleRun(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	sql := strings.TrimSpace(r.FormValue("sql"))
+	sql := strings.TrimSpace(r.FormValue("query"))
 	if sql == "" {
-		sql = strings.TrimSpace(r.FormValue("query"))
+		sql = strings.TrimSpace(r.FormValue("sql"))
 	}
 	if sql == "" {
 		http.Error(w, "no SQL provided", http.StatusBadRequest)
